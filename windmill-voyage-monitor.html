@@ -1,0 +1,2785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windmill & Project Cargo Voyage Monitoring</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'><rect width='34' height='34' rx='4' fill='%23d94040'/><g fill='white'><polygon points='15.8,18.5 18.2,18.5 17.8,30 16.2,30' opacity='0.92'/><rect x='14' y='29.5' width='6' height='1.8' rx='0.9' opacity='0.75'/><rect x='15' y='16.5' width='4' height='2.5' rx='1'/><circle cx='17' cy='15.5' r='1.8'/><path d='M17,15.5 C15.5,12.5 12,9.5 10,5.5 C11.5,5 13,6.5 14,8.5 C15,10.5 16.2,13 17,15.5Z' opacity='0.88'/><path d='M17,15.5 C19,13 22,10.5 24,6.5 C22.5,6 21,7.5 20,9.5 C19,11.5 18,13.5 17,15.5Z' opacity='0.70'/><path d='M17,15.5 C14.5,16.5 11,17 7,19 C7.5,20.5 9.5,20.5 11.5,19.5 C13.5,18.5 15.5,17 17,15.5Z' opacity='0.55'/></g></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root{
+  --bg:#000000;--surface:#141414;--surface2:#1e1e1e;--border:#2b2b2b;
+  --nav-bg:#000000;--nav-bg2:#181818;--nav-text:#e8e8e8;--nav-text-muted:#8a8a8a;
+  --accent:#d94040;--accent-hover:#e05555;--accent2:#12b3b3;
+  --text:#e8e8e8;--text-muted:#9a9a9a;--text-dim:#5c5c5c;
+  --remark-color:#7ab5f5;--green:#22c55e;--amber:#f59e0b;--red:#e04848;
+  --header-h:56px;
+}
+.bright{
+  --bg:#f5f6f8;--surface:#ffffff;--surface2:#eef1f5;--border:#d4dae3;
+  --nav-bg:#ffffff;--nav-bg2:#f0f2f6;--nav-text:#1f2b45;--nav-text-muted:#6b7891;
+  --accent:#d94040;--accent-hover:#b93030;--accent2:#0c8f8f;
+  --text:#1f2b45;--text-muted:#5a6a8a;--text-dim:#9aa3b8;
+  --remark-color:#1a56c4;--green:#16a34a;--amber:#d97706;--red:#dc2626;
+}
+/* Bright header adjustments — the header uses nav-* vars which handle contrast automatically */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px;transition:background .3s,color .3s;}
+
+/* HEADER — dark navy bar */
+header{background:var(--nav-bg);border-bottom:1px solid var(--nav-bg2);min-height:var(--header-h);display:flex;align-items:center;padding:0 20px;gap:14px;position:sticky;top:0;z-index:200;flex-wrap:wrap;color:var(--nav-text);}
+.bright header{border-bottom-color:var(--border);box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.logo-mark{width:34px;height:34px;background:var(--accent);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.logo-mark svg{width:26px;height:26px;}
+.brand{flex:1;min-width:160px;display:flex;align-items:baseline;gap:8px;}
+.brand-title{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--nav-text);}
+.brand-sub{font-size:10px;color:var(--nav-text-muted);letter-spacing:.12em;text-transform:uppercase;font-weight:400;}
+.header-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.date-input-wrap{display:flex;align-items:center;gap:6px;background:var(--nav-bg2);border:1px solid var(--nav-bg2);border-radius:3px;padding:4px 10px;}
+.date-input-wrap label{font-size:9px;color:var(--nav-text-muted);text-transform:uppercase;letter-spacing:.12em;white-space:nowrap;font-family:'Barlow Condensed',sans-serif;font-weight:600;}
+.date-input{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--nav-text);background:transparent;border:none;outline:none;cursor:pointer;width:110px;}
+.date-input::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:pointer;}
+.bright .date-input::-webkit-calendar-picker-indicator{filter:none;}
+.theme-pill{display:inline-flex;background:var(--nav-bg2);border:1px solid var(--nav-bg2);border-radius:3px;overflow:hidden;padding:2px;gap:2px;}
+.theme-pill button{background:transparent;border:none;color:var(--nav-text-muted);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;letter-spacing:.05em;padding:4px 11px;cursor:pointer;border-radius:2px;transition:all .15s;display:flex;align-items:center;gap:4px;}
+.theme-pill button:hover{color:var(--nav-text);}
+.theme-pill button.active{background:var(--accent);color:#fff;}
+
+/* SEGMENTED THEME PILL — Daylight/Twilight/Night like the reference */
+.theme-pill{display:inline-flex;background:var(--nav-bg2);border:1px solid var(--nav-bg2);border-radius:4px;overflow:hidden;padding:2px;gap:2px;}
+.theme-pill button{background:transparent;border:none;color:var(--nav-text-muted);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;letter-spacing:.05em;padding:4px 12px;cursor:pointer;border-radius:3px;transition:all .15s;text-transform:none;}
+.theme-pill button:hover{color:var(--nav-text);}
+.theme-pill button.active{background:var(--accent);color:#fff;}
+/* legacy toggle kept but hidden */
+.toggle-wrap{display:none;}
+
+.btn{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:3px;border:1px solid transparent;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover);}
+.btn-secondary{background:transparent;color:var(--nav-text-muted);border-color:var(--nav-bg2);}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn-archive{background:transparent;color:var(--amber);border-color:var(--amber);}
+.btn-archive:hover{background:var(--amber);color:#000;}
+.btn-print{background:transparent;color:var(--nav-text-muted);border-color:var(--nav-bg2);}
+.btn-print:hover{border-color:var(--accent);color:var(--accent);}
+.btn-import{background:transparent;color:var(--nav-text-muted);border-color:var(--nav-bg2);cursor:pointer;}
+.btn-import:hover{border-color:var(--accent);color:var(--accent);}
+/* buttons OUTSIDE header (analytics/pos-panel/drop zone) get body-appropriate colours via override */
+main .btn-secondary, .pos-controls .btn-secondary, .analytics-controls .btn-secondary, .archive-master-bar .btn-secondary{color:var(--text-muted);border-color:var(--border);}
+main .btn-secondary:hover, .pos-controls .btn-secondary:hover, .analytics-controls .btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+input[type="file"]{display:none;}
+
+/* STATS BAR + CLOCKS */
+.stats-bar{background:var(--surface2);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
+.stat{display:flex;align-items:center;gap:7px;}
+.stat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.stat-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;}
+.stat-val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;}
+.progress-bar-wrap{height:3px;background:var(--border);width:100px;border-radius:2px;overflow:hidden;}
+.progress-bar-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .4s;}
+.stats-divider{width:1px;height:28px;background:var(--border);flex-shrink:0;}
+.clocks-group{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.clock-item{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.clock-tz{font-size:8px;text-transform:uppercase;letter-spacing:.12em;font-family:'Barlow Condensed',sans-serif;font-weight:700;opacity:.75;}
+.clock-time{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;letter-spacing:.05em;}
+
+/* TABS */
+.tabs-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:0;}
+.tab-btn{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:10px 18px;border:none;background:transparent;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;transition:all .2s;margin-bottom:-1px;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-btn:hover:not(.active){color:var(--text);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* TREND PANEL */
+.trend-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px 10px;display:flex;align-items:center;gap:20px;}
+.trend-label-col{display:flex;flex-direction:column;gap:4px;flex-shrink:0;width:110px;}
+.trend-title{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--text-muted);}
+.trend-current{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:500;color:var(--text);line-height:1;}
+.trend-sub{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-top:2px;}
+.trend-canvas-wrap{flex:1;height:72px;position:relative;}
+#trendCanvas{width:100%;height:100%;}
+
+/* MAIN */
+main{padding:20px 24px;}
+
+/* VESSEL TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.table-scroll{overflow-x:auto;}
+.col-check{width:40px;flex-shrink:0;}.col-name{width:150px;flex-shrink:0;}.col-imo{width:110px;flex-shrink:0;}
+.col-class{width:110px;flex-shrink:0;}.col-voyage{width:100px;flex-shrink:0;}.col-cargo{width:150px;flex-shrink:0;}
+.col-remarks{min-width:260px;flex:1;}.col-attach{width:180px;flex-shrink:0;}.col-action{width:80px;flex-shrink:0;}
+.table-header-row{display:flex;background:var(--surface2);border-bottom:1px solid var(--border);min-width:1200px;}
+.th{padding:10px 12px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.15em;color:var(--text-muted);border-right:1px solid var(--border);display:flex;align-items:center;}
+.th:last-child{border-right:none;}
+.vessel-row{display:flex;border-bottom:1px solid var(--border);transition:background .15s;min-height:56px;min-width:1200px;}
+.vessel-row:last-child{border-bottom:none;}
+.vessel-row:hover{background:var(--surface2);}
+.vessel-row.reviewed{border-left:3px solid var(--green);}
+.cell{padding:8px 12px;border-right:1px solid var(--border);display:flex;align-items:center;word-break:break-word;}
+.cell:last-child{border-right:none;}
+.cell-check{justify-content:center;}
+.review-checkbox{width:16px;height:16px;accent-color:var(--green);cursor:pointer;}
+.imo-link{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent2);text-decoration:none;border-bottom:1px dashed var(--accent2);cursor:pointer;transition:color .2s;}
+.imo-link:hover{color:var(--accent);border-color:var(--accent);}
+.vessel-name{font-weight:600;font-size:13px;color:var(--text);}
+.cargo-badge{font-size:9px;font-weight:600;padding:2px 7px;border-radius:3px;text-transform:uppercase;letter-spacing:.1em;font-family:'Barlow Condensed',sans-serif;white-space:nowrap;}
+.cargo-windmill{background:rgba(14,168,168,.15);color:var(--accent2);border:1px solid rgba(14,168,168,.3);}
+.cargo-project{background:rgba(30,111,217,.15);color:var(--accent);border:1px solid rgba(30,111,217,.3);}
+.cargo-breakbulk{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3);}
+.remarks-input{width:100%;background:transparent;border:none;color:var(--remark-color);font-family:'Barlow',sans-serif;font-size:12px;resize:none;outline:none;line-height:1.5;min-height:38px;}
+.remarks-input::placeholder{color:var(--text-dim);font-style:italic;}
+.attachments-cell{flex-direction:column;align-items:flex-start;gap:4px;}
+.attach-btn{font-size:10px;padding:3px 8px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--text-muted);cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:.08em;text-transform:uppercase;transition:all .2s;display:flex;align-items:center;gap:4px;}
+.attach-btn:hover{border-color:var(--accent);color:var(--accent);}
+.attach-list{display:flex;flex-direction:column;gap:2px;width:100%;}
+.attach-item{font-size:10px;color:var(--accent2);cursor:default;max-width:155px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.row-delete-btn{font-size:16px;color:var(--red);background:none;border:none;cursor:pointer;padding:4px 8px;line-height:1;font-weight:700;transition:opacity .2s,transform .1s;border-radius:3px;}
+.row-delete-btn:hover{opacity:.7;transform:scale(1.15);background:rgba(220,38,38,.08);}
+.voyage-inline{width:100%;background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:2px 4px;outline:none;transition:border-color .2s;}
+.voyage-inline:focus{border-bottom-color:var(--accent);}
+.voyage-inline::placeholder{color:var(--text-dim);font-style:italic;font-size:10px;}
+
+/* ADD ROW BAR */
+.add-row-bar{display:none;border-top:2px solid var(--accent);background:var(--surface2);padding:10px 16px;gap:8px;flex-wrap:wrap;align-items:center;}
+.add-row-bar.visible{display:flex;}
+.lbl{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;}
+.add-input{background:var(--surface);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;padding:5px 9px;outline:none;transition:border-color .2s;}
+.add-input:focus{border-color:var(--accent);}
+.add-input.w120{width:120px;}.add-input.w100{width:100px;}.add-input.w90{width:90px;}
+.add-select{background:var(--surface);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;padding:5px 8px;outline:none;cursor:pointer;}
+
+/* ARCHIVE */
+.archive-section{margin-top:24px;}
+.archive-master-bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;user-select:none;}
+.archive-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--text-muted);}
+.archive-divider{flex:1;height:1px;background:var(--border);}
+.archive-toggle-btn{background:var(--accent);border:1px solid var(--accent);border-radius:3px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:4px 12px;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.archive-toggle-btn:hover{filter:brightness(1.1);}
+.archive-group{background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:10px;overflow:hidden;}
+.archive-group-header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.archive-date-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);font-weight:500;cursor:pointer;}
+.archive-count{font-size:10px;color:var(--text-muted);background:var(--bg);border:1px solid var(--border);padding:2px 7px;border-radius:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;}
+.archive-chevron{color:var(--text-muted);transition:transform .2s;font-size:16px;cursor:pointer;}
+.archive-chevron.open{transform:rotate(180deg);}
+.archive-body{display:none;overflow-x:auto;}
+.archive-body.open{display:block;}
+.archive-inner{min-width:1100px;}
+.archive-header-row{display:flex;background:var(--surface2);border-bottom:1px solid var(--border);}
+.archive-th{padding:8px 12px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--text-muted);border-right:1px solid var(--border);display:flex;align-items:center;}
+.archive-th:last-child{border-right:none;}
+.archive-row{display:flex;border-bottom:1px solid var(--border);}
+.archive-row:last-child{border-bottom:none;}
+.archive-cell{padding:8px 12px;border-right:1px solid var(--border);font-size:12px;color:var(--text-muted);display:flex;align-items:center;word-break:break-word;}
+.archive-cell:last-child{border-right:none;}
+.archive-remark{color:var(--remark-color);opacity:.7;font-size:11px;}
+
+/* POSITION PANEL */
+.pos-section{margin:0 24px 24px;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface);}
+.pos-header{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;}
+.pos-title-group{display:flex;flex-direction:column;gap:2px;}
+.pos-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--text);}
+.pos-sub{font-size:10px;color:var(--text-muted);letter-spacing:.04em;}
+.pos-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.map-container{position:relative;width:100%;height:520px;background:#1a2a3a;}
+.map-container.map-max{position:fixed;inset:0;width:100vw;height:100vh;z-index:900;}
+body.map-max-open{overflow:hidden;}
+.map-max-btn{position:absolute;top:10px;right:10px;z-index:12;width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:rgba(10,20,35,.82);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.12);border-radius:4px;color:rgba(255,255,255,.75);cursor:pointer;padding:0;}
+.map-max-btn:hover{color:#fff;border-color:rgba(255,255,255,.35);}
+.map-max-btn svg{width:14px;height:14px;}
+#windyFrame{position:absolute;inset:0;width:100%;height:100%;z-index:1;border:none;display:none;pointer-events:none;}
+#windyFrame.visible{display:block;}
+#leafletMap{position:absolute;inset:0;z-index:2;background:transparent;}
+/* Weather OVERLAY active: Windy sits UNDER a transparent Leaflet so vessel icons + routes stay on top.
+   The chart tiles are dimmed so the weather field reads through them (markers/routes stay full opacity). */
+.map-container.weather-active .leaflet-tile-pane{opacity:.32;transition:opacity .25s;}
+/* Chart style toggle (Bright / Dark) — top right */
+.chart-style-toggle{position:absolute;top:10px;right:46px;z-index:10;display:flex;background:rgba(10,20,35,.82);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.12);border-radius:4px;overflow:hidden;padding:2px;gap:2px;}
+.chart-style-toggle button{background:transparent;border:none;color:rgba(255,255,255,.7);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;cursor:pointer;border-radius:3px;transition:all .15s;}
+.chart-style-toggle button:hover{color:#fff;}
+.chart-style-toggle button.active{background:var(--accent);color:#fff;}
+.chart-style-toggle.hidden{display:none;}
+/* Vessel click call-out — translucent/tinted to match the map background */
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:rgba(18,26,38,.8);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);color:#e8e8e8;border:1px solid rgba(255,255,255,.14);}
+.leaflet-popup-content-wrapper{border-radius:8px;box-shadow:0 8px 26px rgba(0,0,0,.5);}
+.leaflet-popup-tip{box-shadow:none;}
+.leaflet-popup-close-button{color:rgba(255,255,255,.6)!important;}
+.leaflet-popup-close-button:hover{color:#fff!important;}
+.bright .leaflet-popup-content-wrapper,.bright .leaflet-popup-tip{background:rgba(245,246,248,.86);color:#1f2b45;border-color:rgba(0,0,0,.12);}
+.bright .leaflet-popup-close-button{color:rgba(31,43,69,.55)!important;}
+.bright .leaflet-popup-close-button:hover{color:#1f2b45!important;}
+/* Sea-route control panel — bottom-right */
+.route-panel{position:absolute;bottom:12px;right:10px;z-index:10;background:rgba(10,20,35,.85);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:9px 11px;min-width:186px;display:flex;flex-direction:column;gap:8px;}
+.route-panel.hidden{display:none;}
+.route-row{display:flex;align-items:center;gap:8px;}
+.route-row .route-lbl{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.72);white-space:nowrap;}
+.route-switch{position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0;}
+.route-switch input{opacity:0;width:0;height:0;}
+.route-switch-slider{position:absolute;inset:0;cursor:pointer;background:rgba(255,255,255,.22);border-radius:18px;transition:background .2s;}
+.route-switch-slider:before{content:"";position:absolute;height:13px;width:13px;left:3px;top:2.5px;background:#fff;border-radius:50%;transition:transform .2s;}
+.route-switch input:checked+.route-switch-slider{background:var(--accent);}
+.route-switch input:checked+.route-switch-slider:before{transform:translateX(15px);}
+.route-select{flex:1;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:4px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:.04em;padding:3px 6px;outline:none;cursor:pointer;}
+.route-select option{color:#111;}
+.route-engine-badge{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.05em;color:rgba(255,255,255,.55);text-transform:uppercase;}
+.route-legend{border-top:1px solid rgba(255,255,255,.12);padding-top:7px;display:none;flex-direction:column;gap:4px;max-height:150px;overflow-y:auto;}
+.route-legend.visible{display:flex;}
+.route-legend-title{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.5);}
+.route-legend-item{display:flex;align-items:center;gap:7px;}
+.route-legend-line{width:18px;height:0;border-top:2.5px dashed #fff;flex-shrink:0;}
+.route-legend-txt{font-size:10px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.route-legend-txt .rl-dest{color:rgba(255,255,255,.55);font-size:9px;}
+.route-legend-empty{font-size:9px;color:rgba(255,255,255,.45);font-style:italic;}
+.map-overlay-bar{position:absolute;top:10px;left:10px;z-index:10;display:flex;flex-direction:column;gap:6px;}
+/* ── ROUTE HISTORY TREE — collapsible translucent side panel (left edge of map) ── */
+.rtz-tree-panel{position:absolute;top:0;left:0;bottom:0;width:440px;max-width:calc(100% - 40px);z-index:30;display:flex;flex-direction:column;
+  background:rgba(10,18,30,.58);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border-right:1px solid rgba(255,255,255,.12);transform:translateX(-100%);transition:transform .25s ease;}
+.rtz-tree-panel.open{transform:translateX(0);}
+.rtz-tree-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.10);}
+.rtz-tree-title{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#fff;}
+.rtz-tree-count{font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.55);flex:1;}
+.rtz-tree-close{background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.75);border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:13px;line-height:1;}
+.rtz-tree-close:hover{border-color:var(--accent);color:#fff;}
+.rtz-tree-body{flex:1;overflow:auto;position:relative;}
+.rtz-tree-canvas{position:relative;width:440px;}
+.rtz-link{fill:none;stroke:rgba(255,255,255,.28);stroke-width:1;}
+.rtz-node{position:absolute;width:12px;height:12px;border-radius:50%;border:1.5px solid rgba(160,190,230,.9);background:rgba(10,18,30,.6);box-sizing:border-box;}
+.rtz-node-ves{cursor:pointer;}
+.rtz-node-ves.folded{background:rgba(255,255,255,.35);}
+.rtz-lbl{position:absolute;white-space:nowrap;font-family:'Barlow',sans-serif;font-size:11px;color:rgba(255,255,255,.88);display:flex;align-items:center;gap:4px;}
+.rtz-lbl-root{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:10px;color:rgba(255,255,255,.6);}
+.rtz-lbl-ves{font-weight:600;max-width:160px;background:rgba(10,18,30,.6);padding:0 3px;border-radius:2px;}
+.rtz-lbl-ves span:first-of-type{overflow:hidden;text-overflow:ellipsis;}
+.rtz-n{font-family:'JetBrains Mono',monospace;font-size:8px;color:rgba(255,255,255,.5);}
+.rtz-leaf{position:absolute;display:flex;align-items:center;gap:6px;height:18px;padding-right:6px;border-radius:3px;white-space:nowrap;}
+.rtz-leaf:not(.current):hover{background:rgba(255,255,255,.08);}
+.rtz-dot{width:10px;height:10px;border-radius:50%;border:1.5px solid;box-sizing:border-box;flex-shrink:0;background:transparent;}
+.rtz-leaf-name{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.72);cursor:pointer;}
+.rtz-leaf.current .rtz-leaf-name{color:#fff;font-weight:500;}
+.rtz-cur{font-family:'Barlow Condensed',sans-serif;font-size:8px;font-weight:700;letter-spacing:.12em;border:1px solid;border-radius:2px;padding:0 4px;}
+.rtz-x{background:transparent;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:14px;line-height:1;padding:0 3px;}
+.rtz-x:hover{color:var(--red);}
+.rtz-tree-empty{padding:24px 16px;font-size:11px;color:rgba(255,255,255,.55);text-align:center;line-height:1.6;}
+.rtz-tree-tab{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:29;background:rgba(10,18,30,.72);backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.14);border-left:none;border-radius:0 5px 5px 0;color:rgba(255,255,255,.8);cursor:pointer;
+  padding:10px 5px;writing-mode:vertical-rl;transform-origin:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+.rtz-tree-tab:hover{color:#fff;border-color:var(--accent);}
+.rtz-tree-tab .tab-count{writing-mode:horizontal-tb;background:var(--accent);color:#fff;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 4px;}
+.rtz-tree-tab .tab-count:empty{display:none;}
+.map-container.rtz-tree-open .rtz-tree-tab{display:none;}
+.map-container .map-overlay-bar,.map-container .map-legend{transition:left .25s ease;}
+.map-container.rtz-tree-open .map-overlay-bar,.map-container.rtz-tree-open .map-legend{left:450px;}
+.map-container .map-overlay-bar{left:52px;}
+.map-container .map-legend{left:34px;}
+.storm-chip.active{background:rgba(255,31,31,.14)!important;border-color:rgba(255,31,31,.55)!important;color:#ff8f8f!important;}
+.storm-status{background:rgba(10,20,35,.82);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:3px 8px;font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.7);white-space:nowrap;max-width:230px;overflow:hidden;text-overflow:ellipsis;}
+.storm-status.ok{border-color:rgba(255,31,31,.5);}
+.storm-status.warn,.storm-status.error{color:#f59e0b;border-color:rgba(245,158,11,.5);}
+.storm-status.loading{color:rgba(255,255,255,.5);}
+.storm-name-lbl{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.06em;color:#ff1f1f;white-space:nowrap;text-shadow:0 0 3px #000,0 0 3px #000,0 0 6px rgba(0,0,0,.8);}
+.storm-name-lbl div{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:500;letter-spacing:0;color:#ffb3b3;}
+.storm-node-lbl{font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;color:#ff1f1f;white-space:nowrap;text-shadow:0 0 3px #000,0 0 3px #000,0 0 3px #000;}
+.storm-node-lbl span{color:#ffb3b3;font-weight:500;}
+.map-overlay-chip{background:rgba(10,20,35,.82);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:4px 10px;font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.7);cursor:pointer;transition:all .2s;white-space:nowrap;}
+.map-overlay-chip:hover{border-color:#0fa8a8;color:#fff;}
+.map-overlay-chip.active{background:rgba(217,64,64,.16);border-color:rgba(217,64,64,.6);color:#ffb0b0;box-shadow:inset 2px 0 0 rgba(217,64,64,.85);}
+.map-legend{position:absolute;bottom:28px;left:10px;z-index:10;background:rgba(10,20,35,.85);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:8px 12px;max-width:220px;display:none;}
+.map-legend.visible{display:block;}
+.legend-title{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:rgba(255,255,255,.5);margin-bottom:6px;}
+.legend-item{display:flex;align-items:flex-start;gap:7px;margin-bottom:5px;}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.3);margin-top:2px;}
+.legend-name{font-size:10px;color:rgba(255,255,255,.85);font-weight:500;}
+.legend-ts{font-size:9px;color:rgba(255,255,255,.45);font-family:'JetBrains Mono',monospace;}
+.map-tip{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;background:rgba(10,20,35,.75);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:10px 18px;font-size:11px;color:rgba(255,255,255,.6);font-family:'Barlow Condensed',sans-serif;letter-spacing:.06em;text-align:center;pointer-events:none;}
+.map-tip.hidden{display:none;}
+.pos-table-wrap{border-top:1px solid var(--border);overflow-x:auto;}
+.pos-table-header{display:flex;background:var(--surface2);border-bottom:1px solid var(--border);min-width:800px;}
+.ptcol{padding:8px 10px;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--text-muted);border-right:1px solid var(--border);display:flex;align-items:center;}
+.ptcol:last-child{border-right:none;}
+.ptcol-flag{width:70px;flex-shrink:0;justify-content:center;}
+.ptcol-name{width:200px;flex-shrink:0;}.ptcol-imo{width:100px;flex-shrink:0;}.ptcol-latlon{width:200px;flex-shrink:0;}
+.ptcol-dest{width:180px;flex-shrink:0;}.ptcol-eta{flex:1;min-width:170px;}
+.pos-data-row{display:flex;border-bottom:1px solid var(--border);min-width:800px;transition:background .15s;}
+.pos-data-row:last-child{border-bottom:none;}
+.pos-data-row:hover{background:var(--surface2);}
+.pcell{padding:6px 10px;border-right:1px solid var(--border);display:flex;align-items:center;}
+.pcell:last-child{border-right:none;}
+.pcell input{width:100%;background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:2px;outline:none;transition:border-color .2s;}
+.pcell input:focus{border-bottom-color:var(--accent);}
+.pcell input::placeholder{color:var(--text-dim);font-style:italic;font-size:10px;}
+.mt-mini-link{font-size:10px;color:var(--accent2);text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border:1px solid var(--accent2);border-radius:3px;white-space:nowrap;transition:all .2s;}
+.mt-mini-link:hover{background:var(--accent2);color:#fff;}
+
+/* DRAG DROP */
+.drop-zone{border:1px dashed var(--nav-text-muted);border-radius:3px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--nav-text-muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;transition:all .2s;white-space:nowrap;cursor:copy;display:flex;align-items:center;gap:4px;line-height:1.2;}
+.drop-zone:hover{border-color:var(--accent);color:var(--accent);}
+.drop-zone.drag-over{border-color:var(--accent);border-style:solid;background:rgba(217,64,64,.14);color:var(--accent);}
+/* RTZ drag-drop overlay on the map panel */
+.rtz-drop-overlay{position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(217,64,64,.14);backdrop-filter:blur(2px);border:3px dashed var(--accent);pointer-events:none;}
+.rtz-drop-overlay.visible{display:flex;}
+.rtz-drop-inner{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#fff;background:rgba(10,20,35,.82);padding:14px 26px;border-radius:8px;border:1px solid rgba(255,255,255,.2);}
+/* Red animated searoute particle glow */
+.searoute-particle{filter:drop-shadow(0 0 4px #ff2d2d);}
+
+/* ANALYTICS TAB */
+.analytics-panel{padding:20px 24px;}
+.analytics-controls{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.period-btn{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:5px 14px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;transition:all .2s;}
+.period-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.period-btn:hover:not(.active){border-color:var(--accent);color:var(--accent);}
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.analytics-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.analytics-card-header{padding:12px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--text-muted);}
+.analytics-card-body{padding:16px;}
+.chart-canvas-wrap{height:180px;position:relative;}
+.analytics-summary{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;}
+.summary-chip{display:flex;align-items:center;gap:6px;font-size:11px;padding:4px 10px;border-radius:3px;border:1px solid var(--border);}
+.summary-chip-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.summary-chip-label{font-family:'Barlow Condensed',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);}
+.summary-chip-val{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;}
+
+/* NOTIFICATION */
+.notif{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:12px 18px;font-size:12px;color:var(--text);box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:1000;display:none;align-items:center;gap:10px;border-left:3px solid var(--green);font-family:'Barlow Condensed',sans-serif;letter-spacing:.05em;font-weight:600;text-transform:uppercase;}
+.notif.show{display:flex;}
+
+/* PRINT */
+@media print{
+  @page{size:A4 portrait;margin:14mm 12mm;}
+  header,.stats-bar,.tabs-bar,.trend-panel,.add-row-bar,.archive-section,.pos-section,.analytics-panel,.drop-zone,.row-delete-btn,.attach-btn,.btn,.toggle-wrap,.theme-label,.notif{display:none!important;}
+  body{background:#fff!important;color:#000!important;font-size:10pt;}
+  main{padding:0!important;}
+  .print-header{display:block!important;}
+  .table-wrap{border:1px solid #bbb!important;}
+  .table-scroll{overflow:visible!important;}
+  .table-header-row,.vessel-row{min-width:0!important;page-break-inside:avoid;}
+  .th{color:#333!important;font-size:7pt!important;}
+  .col-check{width:18pt!important;}.col-name{width:88pt!important;}.col-imo{width:58pt!important;}
+  .col-class{width:54pt!important;}.col-voyage{width:48pt!important;}.col-cargo{width:72pt!important;}
+  .col-remarks{min-width:0!important;flex:1!important;}.col-attach{width:60pt!important;}.col-action{display:none!important;}
+  .remarks-input{color:#1a4fa0!important;font-size:8pt!important;min-height:0!important;}
+}
+.print-header{display:none;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo-mark">
+    <svg viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <polygon points="15.8,18.5 18.2,18.5 17.8,30 16.2,30" fill="white" opacity="0.92"/>
+      <rect x="14" y="29.5" width="6" height="1.8" rx="0.9" fill="white" opacity="0.75"/>
+      <rect x="15" y="16.5" width="4" height="2.5" rx="1" fill="white"/>
+      <circle cx="17" cy="15.5" r="1.8" fill="white"/>
+      <path d="M17,15.5 C15.5,12.5 12,9.5 10,5.5 C11.5,5 13,6.5 14,8.5 C15,10.5 16.2,13 17,15.5Z" fill="white" opacity="0.88"/>
+      <path d="M17,15.5 C19,13 22,10.5 24,6.5 C22.5,6 21,7.5 20,9.5 C19,11.5 18,13.5 17,15.5Z" fill="white" opacity="0.70"/>
+      <path d="M17,15.5 C14.5,16.5 11,17 7,19 C7.5,20.5 9.5,20.5 11.5,19.5 C13.5,18.5 15.5,17 17,15.5Z" fill="white" opacity="0.55"/>
+    </svg>
+  </div>
+  <div class="brand">
+    <div class="brand-title">Windmill &amp; Project Cargo Voyage Monitoring</div>
+  </div>
+  <div class="header-controls">
+    <div class="date-input-wrap">
+      <label for="headerDate">Review Date</label>
+      <input type="date" class="date-input" id="headerDate">
+    </div>
+    <div class="theme-pill">
+      <button id="th-bright" onclick="setTheme('bright')" class="active">&#9728; Bright</button>
+      <button id="th-dark" onclick="setTheme('dark')">&#9790; Dark</button>
+    </div>
+    <button class="btn btn-archive" onclick="archiveDay()">&#10003; Archive Day</button>
+    <button class="btn btn-print" onclick="printReport()">&#128438; Print PDF</button>
+    <label class="btn btn-import" for="csvFileInput">&#8659; Import CSV</label>
+    <input type="file" id="csvFileInput" accept=".csv" onchange="importCSV(this)">
+    <button class="btn btn-secondary" onclick="exportIMOcsv()">&#8693; Export4 MarineTraffic</button>
+    <div class="drop-zone" id="dropZone" title="Drag &amp; drop a JSON database file here to import (.rtz route files also accepted)">&#128196; Drop DB here</div>
+    <button class="btn btn-secondary" onclick="exportJSON()">&#8659; Export DB</button>
+    <label class="btn btn-secondary" for="jsonImportInput">&#8657; Import DB</label>
+    <input type="file" id="jsonImportInput" accept=".json" onchange="importJSON(this)">
+    <button class="btn btn-primary" onclick="addRow()">+ Add Vessel</button>
+  </div>
+</header>
+
+<!-- STATS BAR + CLOCKS -->
+<div class="stats-bar">
+  <div class="stat"><div class="stat-dot" style="background:var(--accent)"></div><span class="stat-label">Active</span><span class="stat-val" id="statActive">0</span></div>
+  <div class="stat"><div class="stat-dot" style="background:var(--green)"></div><span class="stat-label">Reviewed</span><span class="stat-val" id="statReviewed">0</span></div>
+  <div class="stat"><div class="stat-dot" style="background:var(--amber)"></div><span class="stat-label">Pending</span><span class="stat-val" id="statPending">0</span></div>
+  <span style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-right:4px;">Progress</span>
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-left:4px;" id="progressPct">0%</span>
+  <div class="stats-divider"></div>
+  <div class="clocks-group">
+    <div class="clock-item">
+      <div class="clock-tz" style="color:#3b82f6;">UTC</div>
+      <div class="clock-time" style="color:#3b82f6;" id="clk-utc">--:--</div>
+    </div>
+    <div class="clock-item">
+      <div class="clock-tz" style="color:#a16207;">Hamburg</div>
+      <div class="clock-time" style="color:#a16207;" id="clk-ham">--:--</div>
+    </div>
+    <div class="clock-item">
+      <div class="clock-tz" style="color:#eab308;">Dubai</div>
+      <div class="clock-time" style="color:#eab308;" id="clk-dxb">--:--</div>
+    </div>
+    <div class="clock-item">
+      <div class="clock-tz" style="color:#f97316;">India</div>
+      <div class="clock-time" style="color:#f97316;" id="clk-ist">--:--</div>
+    </div>
+    <div class="clock-item">
+      <div class="clock-tz" style="color:#dc2626;">Singapore</div>
+      <div class="clock-time" style="color:#dc2626;" id="clk-sgt">--:--</div>
+    </div>
+  </div>
+  <div class="credit-note" style="margin-left:auto;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--text-dim);white-space:nowrap;">Capt. Novonil Roy (ver 26.09)</div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab('dashboard',this)">Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('analytics',this)">Visual Insights</button>
+</div>
+
+<!-- ═══ DASHBOARD TAB ═══ -->
+<div id="tab-dashboard" class="tab-panel active">
+
+<!-- TREND CHART -->
+<div class="trend-panel">
+  <div class="trend-label-col">
+    <div class="trend-title">Active Vessels</div>
+    <div class="trend-current" id="trendCurrent">0</div>
+    <div class="trend-sub">30-day trend</div>
+  </div>
+  <div class="trend-canvas-wrap"><canvas id="trendCanvas"></canvas></div>
+</div>
+
+<!-- MAIN TABLE -->
+<main>
+  <div class="print-header" id="printHeader" style="margin-bottom:14pt;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid #1e6fd9;padding-bottom:8pt;margin-bottom:10pt;">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16pt;font-weight:700;text-transform:uppercase;color:#0f1929;">Windmill &amp; Project Cargo</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:11pt;text-transform:uppercase;color:#5a6a8a;">Daily Voyage Review Report</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:9pt;color:#5a6a8a;text-transform:uppercase;">Oldendorff Carriers</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10pt;font-weight:600;color:#1e6fd9;" id="printDate"></div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:8pt;color:#aab5cc;margin-top:2pt;">Performance Management</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <div class="table-header-row">
+        <div class="th col-check" style="justify-content:center;">Done</div>
+        <div class="th col-name" style="flex-direction:column;align-items:flex-start;gap:1px;padding-top:6px;padding-bottom:6px;">
+          <span>Vessel Name</span>
+          <span style="font-size:9px;color:#a855f7;letter-spacing:.08em;font-weight:600;">(SEDNA link)</span>
+        </div>
+        <div class="th col-imo" style="flex-direction:column;align-items:flex-start;gap:1px;padding-top:6px;padding-bottom:6px;">
+          <span>IMO</span>
+          <span style="font-size:9px;color:#a855f7;letter-spacing:.08em;font-weight:600;">(MarineTraffic link)</span>
+        </div>
+        <div class="th col-class">Class</div>
+        <div class="th col-voyage">Voyage No.</div>
+        <div class="th col-cargo">Cargo Type</div>
+        <div class="th col-remarks">Daily Review Remarks</div>
+        <div class="th col-attach">Attachments</div>
+        <div class="th col-action">Actions</div>
+      </div>
+      <div id="vesselRows"></div>
+    </div>
+    <div class="add-row-bar" id="addRowBar">
+      <span class="lbl">New Vessel:</span>
+      <input class="add-input w120" id="inp-name" placeholder="Vessel name"/>
+      <input class="add-input w100" id="inp-imo" placeholder="IMO number"/>
+      <select class="add-select" id="inp-class" style="width:130px;">
+        <option value="">Class&hellip;</option>
+        <option value="Handy-Supra">Handy-Supra</option>
+        <option value="Panamax">Panamax</option>
+      </select>
+      <input class="add-input w90" id="inp-voyage" placeholder="Voyage No."/>
+      <select class="add-select" id="inp-cargo" style="width:230px;">
+        <option value="">Cargo type&hellip;</option>
+        <option value="Windmill / Project Cargo">Windmill / Project Cargo</option>
+        <option value="Deck Cargo (Logs etc.)">Deck Cargo (Logs etc.)</option>
+        <option value="Heavy Units / Steel Pipes / Coils">Heavy Units / Steel Pipes / Coils</option>
+      </select>
+      <button class="btn btn-primary" onclick="confirmAddRow()">Confirm</button>
+      <button class="btn btn-secondary" onclick="cancelAddRow()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ARCHIVE -->
+  <div class="archive-section" id="archiveSection"></div>
+</main>
+
+<!-- DRAG & DROP ZONE -->
+
+<!-- POSITION PANEL -->
+<section class="pos-section" id="posSection">
+  <div class="pos-header">
+    <div class="pos-title-group">
+      <div class="pos-title">Last Known Positions &mdash; Active Fleet</div>
+      <div class="pos-sub">Import MarineTraffic CSV to auto-populate positions &middot; drag &amp; drop RTZ route files onto the map &middot; weather overlay via Windy &middot; active storms NHC + JTWC (10-min refresh)</div>
+    </div>
+    <div class="pos-controls">
+      <label class="btn btn-import" for="mtCsvInput" title="Import MarineTraffic vessels export CSV">&#8659; Import MT CSV</label>
+      <input type="file" id="mtCsvInput" accept=".csv" onchange="importMTcsv(this)">
+      <button class="btn btn-secondary" onclick="fitAllVessels()">&#8982; Fit All</button>
+      <label class="btn btn-secondary" for="rtzFileInput" title="Import an RTZ planned route (matched to a vessel by name or IMO)">&#9875; Import RTZ</label>
+      <input type="file" id="rtzFileInput" accept=".rtz,.xml" multiple onchange="importRTZfiles(this)">
+      <button class="btn btn-secondary" onclick="openWindyFull()">&#127758; Open Windy</button>
+    </div>
+  </div>
+  <div class="map-container">
+    <div id="leafletMap"></div>
+    <div class="rtz-drop-overlay" id="rtzDropOverlay"><div class="rtz-drop-inner">&#9875; Drop RTZ route file to plot</div></div>
+    <div class="rtz-tree-tab" id="rtzTreeTab" onclick="toggleRouteTree(true)" title="Show RTZ route history">Route History<span class="tab-count" id="rtzTreeTabCount"></span></div>
+    <div class="rtz-tree-panel" id="rtzTreePanel">
+      <div class="rtz-tree-head">
+        <div class="rtz-tree-title">&#9875; Route History</div>
+        <div class="rtz-tree-count" id="rtzTreeCount"></div>
+        <button class="rtz-tree-close" onclick="toggleRouteTree(false)" title="Collapse panel">&lsaquo;</button>
+      </div>
+      <div class="rtz-tree-body" id="rtzTreeBody"></div>
+    </div>
+    <iframe id="windyFrame" src="about:blank" frameborder="0" allowfullscreen></iframe>
+    <div class="map-overlay-bar">
+      <div class="map-overlay-chip" id="chip-map"      onclick="setOverlay('map')">&#9679; Chart</div>
+      <div class="map-overlay-chip"        id="chip-waves"    onclick="setOverlay('waves')">&#127798; Waves</div>
+      <div class="map-overlay-chip"        id="chip-wind"     onclick="setOverlay('wind')">&#127788; Wind</div>
+      <div class="map-overlay-chip active" id="chip-pressure" onclick="setOverlay('pressure')">&#8635; Isobars</div>
+      <div class="map-overlay-chip storm-chip" id="chip-storms" onclick="toggleStorms()" title="Active named storms (NHC + JTWC) — auto-refresh every 10 min">&#127744; Storms</div>
+      <div class="storm-status idle" id="stormStatus">Off</div>
+    </div>
+    <button class="map-max-btn" id="mapMaxBtn" onclick="toggleMapMax()" title="Maximise map (Esc to restore)"></button>
+    <div class="chart-style-toggle" id="chartStyleToggle">
+      <button id="cs-dark" class="active" onclick="setChartStyle('dark')">Dark</button>
+      <button id="cs-osm"  onclick="setChartStyle('osm')">Bright</button>
+      <button id="cs-sat"  onclick="setChartStyle('sat')">Satellite</button>
+    </div>
+    <div class="map-legend" id="mapLegend"><div class="legend-title">Active Fleet</div><div id="legendItems"></div></div>
+    <div class="route-panel" id="routePanel">
+      <div class="route-row">
+        <label class="route-switch"><input type="checkbox" id="seaRouteToggle" onchange="toggleSeaRoutes()"><span class="route-switch-slider"></span></label>
+        <span class="route-lbl">&#9875; Sea Routes</span>
+      </div>
+      <div class="route-row">
+        <span class="route-lbl">Engine</span>
+        <select class="route-select" id="routeEngineSelect" onchange="setRouteEngine(this.value)" title="Choose which engine computes the sea routes">
+          <option value="auto">Auto (best available)</option>
+          <option value="searoute">searoute-js (CDN)</option>
+          <option value="embedded">Great circle (direct)</option>
+        </select>
+      </div>
+      <div class="route-legend" id="routeLegend"></div>
+    </div>
+    <div class="map-tip" id="mapTip">No positions entered yet &mdash; add lat/lon in the table below</div>
+  </div>
+  <div class="pos-table-wrap">
+    <div class="pos-table-header">
+      <div class="ptcol ptcol-flag">Flag</div>
+      <div class="ptcol ptcol-name">Vessel</div>
+      <div class="ptcol ptcol-imo">IMO</div>
+      <div class="ptcol ptcol-latlon">Position (Lat / Lon)</div>
+      <div class="ptcol ptcol-dest">Destination Port</div>
+      <div class="ptcol ptcol-eta">Reported ETA</div>
+    </div>
+    <div id="posRows"></div>
+  </div>
+</section>
+
+</div><!-- end tab-dashboard -->
+
+<!-- ═══ ANALYTICS TAB ═══ -->
+<div id="tab-analytics" class="tab-panel">
+  <div class="analytics-panel">
+    <div class="analytics-controls">
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);">Period:</span>
+      <button class="period-btn active" id="period-week"  onclick="setPeriod('week',this)">Weekly</button>
+      <button class="period-btn"        id="period-month" onclick="setPeriod('month',this)">Monthly</button>
+      <button class="period-btn"        id="period-year"  onclick="setPeriod('year',this)">Yearly</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-secondary" onclick="exportAnalyticsCSV()">&#8659; Export CSV</button>
+    </div>
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <div class="analytics-card-header">Vessel Count by Cargo Type</div>
+        <div class="analytics-card-body">
+          <div class="chart-canvas-wrap"><canvas id="cargoTypeChart"></canvas></div>
+          <div class="analytics-summary" id="cargoTypeSummary"></div>
+        </div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-card-header">Total Vessel-Days by Period</div>
+        <div class="analytics-card-body">
+          <div class="chart-canvas-wrap"><canvas id="periodChart"></canvas></div>
+        </div>
+      </div>
+      <div class="analytics-card" style="grid-column:1/-1;">
+        <div class="analytics-card-header">Cargo Type Breakdown Over Time</div>
+        <div class="analytics-card-body">
+          <div class="chart-canvas-wrap" style="height:200px;"><canvas id="stackedChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATION -->
+<div class="notif" id="notif"><span>&#10003;</span><span id="notifText">Done</span></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// STATE & PERSISTENCE
+// ══════════════════════════════════════════════════════════════════════════════
+const STORAGE_KEY = 'wpcvm_v3';
+// Hoisted early — referenced by saveState before initMap runs
+var currentChartStyle = 'dark';
+var _nt; // notification timer, referenced by early showNotif calls
+var leafletMap = null; // referenced by setTheme before initMap runs
+function loadState(){try{const r=localStorage.getItem(STORAGE_KEY);return r?JSON.parse(r):null;}catch(e){return null;}}
+function saveState(){
+  flushRemarks();flushPositions();
+  try{
+    localStorage.setItem(STORAGE_KEY,JSON.stringify({
+      vessels,archives,nextId,vesselPositions,rtzRoutes,
+      activeDate:document.getElementById('headerDate').value,
+      theme:document.body.classList.contains('bright')?'bright':'dark',
+      chartStyle:currentChartStyle||'dark',
+      seaRoutes:!!seaRoutesOn,
+      routeEngine:routeEngine||'auto',
+      stormsOn:(typeof stormsOn==='undefined')?true:!!stormsOn
+    }));
+  }catch(e){showNotif('Storage full — export DB to save externally',true);}
+}
+const _s=loadState();
+let vessels         = _s&&_s.vessels         ? _s.vessels         : [];
+let archives        = _s&&_s.archives        ? _s.archives        : [];
+let nextId          = _s&&_s.nextId          ? _s.nextId          : 1;
+let vesselPositions = _s&&_s.vesselPositions ? _s.vesselPositions : {};
+// RTZ planned routes, keyed by vessel IMO → {name, importedAt(ISO), pts:[[lat,lon],…], dest}
+// RTZ route HISTORY, keyed by vessel IMO → [ {id,name,etd,importedAt,pts,dest}, … ] (oldest → newest).
+// The newest entry (last in the list) is the CURRENT route; earlier entries are historical.
+let rtzRoutes       = migrateRtz(_s&&_s.rtzRoutes ? _s.rtzRoutes : {});
+// Converts the old single-route format {imo:{…}} into the history format {imo:[{…}]}
+function migrateRtz(obj){
+  const out={};
+  Object.keys(obj||{}).forEach(imo=>{
+    let v=obj[imo]; if(!v)return;
+    if(!Array.isArray(v))v=[v];
+    v=v.filter(r=>r&&r.pts&&r.pts.length>=2).map((r,i)=>({
+      id:r.id||('r'+Date.now().toString(36)+i+Math.random().toString(36).slice(2,6)),
+      name:r.name||'RTZ',etd:r.etd||null,etdDateOnly:!!r.etdDateOnly,importedAt:r.importedAt||new Date().toISOString(),
+      pts:r.pts,dest:r.dest||''
+    }));
+    v.sort((a,b)=>new Date(a.importedAt)-new Date(b.importedAt));
+    if(v.length)out[imo]=v;
+  });
+  return out;
+}
+function rtzList(imo){const a=rtzRoutes[imo];return Array.isArray(a)?a:[];}
+function rtzCurrent(imo){const a=rtzList(imo);return a.length?a[a.length-1]:null;}
+function hasRtz(imo){return rtzList(imo).length>0;}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+function todayISO(){return new Date().toISOString().slice(0,10);}
+function isoToDisplay(iso){
+  if(!iso)return'—';
+  const[y,m,d]=iso.split('-');
+  return`${d} ${'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[+m-1]} ${y}`;
+}
+function nextDayISO(iso){const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10);}
+function getActiveDate(){return document.getElementById('headerDate').value||todayISO();}
+function cargoClass(c){
+  if(!c)return'cargo-breakbulk';
+  if(c.includes('Windmill')||c.includes('Project'))return'cargo-windmill';
+  if(c.includes('Deck'))return'cargo-project';
+  return'cargo-breakbulk';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════════════════
+document.getElementById('headerDate').value=(_s&&_s.activeDate)?_s.activeDate:todayISO();
+document.getElementById('headerDate').addEventListener('change',saveState);
+// Theme toggle (Bright/Dark) — also auto-syncs the chart map style
+function setTheme(mode){
+  document.body.classList.toggle('bright',mode==='bright');
+  ['bright','dark'].forEach(k=>{const el=document.getElementById('th-'+k);if(el)el.classList.toggle('active',k===mode);});
+  // Auto-sync chart map style: Bright theme → Bright (Esri Street), Dark theme → Dark
+  const desiredChart = mode==='bright' ? 'osm' : 'dark';
+  if(typeof setChartStyle==='function' && leafletMap){
+    setChartStyle(desiredChart);
+  } else {
+    currentChartStyle = desiredChart;
+  }
+  saveState();renderTrendChart();
+}
+// Restore saved theme (default: DARK — with the map style also defaulting to DARK)
+setTheme((_s&&_s.theme==='bright')?'bright':'dark');
+function toggleTheme(){setTheme(document.body.classList.contains('bright')?'dark':'bright');}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════════════════════════════
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='analytics')renderAnalytics();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CLOCKS
+// ══════════════════════════════════════════════════════════════════════════════
+function updateClocks(){
+  const now=new Date();
+  function fmt(tz){return now.toLocaleTimeString('en-GB',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false});}
+  document.getElementById('clk-utc').textContent=fmt('UTC');
+  document.getElementById('clk-ham').textContent=fmt('Europe/Berlin');
+  document.getElementById('clk-dxb').textContent=fmt('Asia/Dubai');
+  document.getElementById('clk-ist').textContent=fmt('Asia/Kolkata');
+  document.getElementById('clk-sgt').textContent=fmt('Asia/Singapore');
+}
+updateClocks();
+setInterval(updateClocks,1000);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VESSEL TABLE RENDER
+// ══════════════════════════════════════════════════════════════════════════════
+function flushRemarks(){
+  vessels.forEach(v=>{
+    const ta=document.querySelector('#row-'+v.id+' .remarks-input');
+    if(ta)v.remarks=ta.value;
+  });
+}
+// ── SEDNA LINK ────────────────────────────────────────────────────────────────
+function sednaLink(name){
+  const parts=name.trim().toUpperCase().split(/\s+/);
+  if(parts.length===1){
+    const encoded=encodeURIComponent(parts[0]);
+    return `https://oldendorff.sednanetwork.com/list/message/27238350?bookmark=BOSS&filter=all&filterSet=%7B%22type%22%3A%22and%22%2C%22children%22%3A%5B%7B%22type%22%3A%22or%22%2C%22children%22%3A%5B%7B%22term%22%3A%7B%22type%22%3A%22from%22%2C%22query%22%3A%22%40bwesglobal.com%22%7D%7D%2C%7B%22term%22%3A%7B%22type%22%3A%22to%22%2C%22query%22%3A%22%40bwesglobal.com%22%7D%7D%5D%7D%2C%7B%22term%22%3A%7B%22type%22%3A%22vesselName%22%2C%22query%22%3A%22${encoded}%22%7D%7D%5D%7D&teamId=67&teams=all`;
+  } else {
+    const w1=parts[0];
+    const rest=parts.slice(1).join(' ');
+    const nameEncoded=encodeURIComponent(w1+' '+rest); // encodes space as %20
+    // Rebuild the filterSet with the vessel name injected, then encode the whole filterSet
+    const filterObj={type:'and',children:[{type:'or',children:[{term:{type:'from',query:'@bwesglobal.com'}},{term:{type:'to',query:'@bwesglobal.com'}}]},{term:{type:'vesselName',query:w1+' '+rest}}]};
+    const filterEncoded=encodeURIComponent(JSON.stringify(filterObj));
+    return `https://oldendorff.sednanetwork.com/list/message/27239531?bookmark=BOSS&filter=all&filterSet=${filterEncoded}&teamId=67&teams=all`;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+function renderRows(){
+  const c=document.getElementById('vesselRows');
+  c.innerHTML='';
+  if(vessels.length===0){
+    c.innerHTML='<div style="padding:32px;text-align:center;color:var(--text-dim);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:.1em;text-transform:uppercase;font-size:12px;">No active vessel records — click + Add Vessel or Import CSV</div>';
+    updateStats();return;
+  }
+  vessels.forEach((v,idx)=>{
+    const row=document.createElement('div');
+    row.className='vessel-row'+(v.reviewed?' reviewed':'');
+    row.addEventListener('mouseenter',()=>hoverFocusVessel(v.imo));
+    row.addEventListener('mouseleave',cancelHoverFocus);
+    row.id='row-'+v.id;
+    const aH=v.attachments.map(a=>`<span class="attach-item" title="${a}">${a}</span>`).join('');
+    const dotColor=DOT_COLORS[idx%DOT_COLORS.length];
+    row.innerHTML=`
+      <div class="cell cell-check col-check"><input type="checkbox" class="review-checkbox" ${v.reviewed?'checked':''} onchange="toggleReview(${v.id},this)"></div>
+      <div class="cell col-name" style="gap:8px;">
+        <span style="width:9px;height:9px;border-radius:50%;background:${dotColor};flex-shrink:0;display:inline-block;box-shadow:0 0 6px ${dotColor}99;"></span>
+        <a class="vessel-name" href="${sednaLink(v.name)}" target="_blank" rel="noopener" title="Open in SEDNA" style="color:var(--text);text-decoration:none;font-weight:600;font-size:13px;">${v.name}</a>
+      </div>
+      <div class="cell col-imo"><a class="imo-link" onclick="window.open('https://www.marinetraffic.com/en/ais/details/ships/imo:${v.imo}','_blank','noopener')">${v.imo}</a></div>
+      <div class="cell col-class" style="font-size:12px;color:var(--text-muted);">${v.vesselClass}</div>
+      <div class="cell col-voyage"><input class="voyage-inline" value="${v.voyage||''}" placeholder="Voyage No." oninput="updateVoyage(${v.id},this.value)"></div>
+      <div class="cell col-cargo" style="font-size:11px;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:.05em;text-transform:uppercase;">${v.cargo}</div>
+      <div class="cell col-remarks" style="padding:6px 12px;"><textarea class="remarks-input" rows="2" placeholder="Enter daily review remarks…" oninput="updateRemarks(${v.id},this.value)">${v.remarks||''}</textarea></div>
+      <div class="cell col-attach attachments-cell">
+        <div class="attach-list">${aH||'<span style="font-size:10px;color:var(--text-dim);">No files</span>'}</div>
+        <label class="attach-btn" for="file-${v.id}">&#128206; Attach</label>
+        <input type="file" id="file-${v.id}" multiple onchange="handleAttach(${v.id},this)">
+      </div>
+      <div class="cell col-action" style="justify-content:center;">
+        <button class="row-delete-btn" onclick="deleteRow(${v.id})" title="Remove vessel">&#10006;</button>
+      </div>`;
+    c.appendChild(row);
+  });
+  updateStats();
+  if(typeof renderPosRows==='function')renderPosRows();
+}
+
+function updateStats(){
+  const t=vessels.length,r=vessels.filter(v=>v.reviewed).length;
+  document.getElementById('statActive').textContent=t;
+  document.getElementById('statReviewed').textContent=r;
+  document.getElementById('statPending').textContent=t-r;
+  const pct=t?Math.round((r/t)*100):0;
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('progressPct').textContent=pct+'%';
+  renderTrendChart();
+}
+
+function toggleReview(id,el){flushRemarks();const v=vessels.find(v=>v.id===id);if(v){v.reviewed=el.checked;renderRows();saveState();}}
+function updateVoyage(id,val){const v=vessels.find(v=>v.id===id);if(v){v.voyage=val.trim()||'—';saveState();}}
+let _rt;
+function updateRemarks(id,val){const v=vessels.find(v=>v.id===id);if(v){v.remarks=val;clearTimeout(_rt);_rt=setTimeout(saveState,800);}}
+function deleteRow(id){flushRemarks();if(!confirm('Remove this vessel?'))return;vessels=vessels.filter(v=>v.id!==id);renderRows();saveState();showNotif('Vessel removed');}
+function handleAttach(id,inp){
+  flushRemarks();
+  const v=vessels.find(v=>v.id===id);if(!v)return;
+  Array.from(inp.files).forEach(f=>{if(!v.attachments.includes(f.name))v.attachments.push(f.name);});
+  renderRows();saveState();showNotif('Attachment(s) added');
+}
+
+// ADD ROW
+function addRow(){document.getElementById('addRowBar').classList.add('visible');document.getElementById('inp-name').focus();}
+function cancelAddRow(){
+  document.getElementById('addRowBar').classList.remove('visible');
+  ['inp-name','inp-imo','inp-voyage'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('inp-class').value='';document.getElementById('inp-cargo').value='';
+}
+function confirmAddRow(){
+  const name=document.getElementById('inp-name').value.trim();
+  const imo=document.getElementById('inp-imo').value.trim();
+  const vc=document.getElementById('inp-class').value||'—';
+  const voyage=document.getElementById('inp-voyage').value.trim()||'—';
+  const cargo=document.getElementById('inp-cargo').value;
+  if(!name){showNotif('Vessel name required',true);return;}
+  if(!imo){showNotif('IMO number required',true);return;}
+  if(!cargo){showNotif('Select a cargo type',true);return;}
+  vessels.push({id:nextId++,name,imo,vesselClass:vc,voyage,cargo,remarks:'',attachments:[],reviewed:false});
+  cancelAddRow();renderRows();saveState();showNotif('Vessel added: '+name);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ARCHIVE
+// ══════════════════════════════════════════════════════════════════════════════
+let _archExpanded=false;
+
+function archiveDay(){
+  flushRemarks();
+  if(vessels.length===0){showNotif('No records to archive',true);return;}
+  const unrev=vessels.filter(v=>!v.reviewed).length;
+  if(unrev&&!confirm(unrev+' vessel(s) not reviewed. Archive anyway?'))return;
+  const d=getActiveDate();
+  const archDisp=isoToDisplay(d);
+  archives.unshift({date:archDisp,rows:JSON.parse(JSON.stringify(vessels))});
+  // Roll vessels forward: keep remarks but prefix with archived date so user can update/extend
+  vessels=vessels.map(v=>{
+    const prev=(v.remarks||'').trim();
+    const carried=prev ? `[${archDisp}] ${prev}` : '';
+    return {...v,id:nextId++,remarks:carried,attachments:[],reviewed:false};
+  });
+  document.getElementById('headerDate').value=nextDayISO(d);
+  renderRows();renderArchives();saveState();
+  showNotif('Archived '+archDisp+' → rolled to '+isoToDisplay(document.getElementById('headerDate').value));
+}
+
+function renderArchives(){
+  const sec=document.getElementById('archiveSection');
+  if(archives.length===0){sec.innerHTML='';renderTrendChart();return;}
+  const arrow=_archExpanded?'&#9650;':'&#9660;';
+  const label=_archExpanded?'Collapse All':'Expand All';
+  let h=`<div class="archive-master-bar">
+    <div class="archive-title">Archive</div>
+    <div class="archive-divider"></div>
+    <span style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">${archives.length} day${archives.length!==1?'s':''}</span>
+    <button class="archive-toggle-btn" onclick="toggleAllArchives()">${arrow}&nbsp;${label}</button>
+  </div>
+  <div id="archGroupsWrap" style="display:${_archExpanded?'block':'none'};">`;
+  archives.forEach((arch,idx)=>{
+    const gid='arch-'+idx;
+    h+=`<div class="archive-group">
+      <div class="archive-group-header">
+        <span class="archive-date-label" onclick="toggleArchive('${gid}')">${arch.date}</span>
+        <span class="archive-count" onclick="toggleArchive('${gid}')">${arch.rows.length} vessel${arch.rows.length!==1?'s':''}</span>
+        <span class="archive-chevron" id="chev-${gid}" onclick="toggleArchive('${gid}')">&#8964;</span>
+        <button onclick="deleteArchive(${idx})" style="margin-left:auto;background:transparent;border:1px solid var(--red);color:var(--red);border-radius:3px;padding:3px 10px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='var(--red)'">&#128465; Delete</button>
+      </div>
+      <div class="archive-body" id="${gid}">
+        <div class="archive-inner">
+          <div class="archive-header-row">
+            <div class="archive-th col-check">Done</div><div class="archive-th col-name">Vessel</div>
+            <div class="archive-th col-imo">IMO</div><div class="archive-th col-class">Class</div>
+            <div class="archive-th col-voyage">Voyage</div><div class="archive-th col-cargo">Cargo</div>
+            <div class="archive-th col-remarks">Remarks</div><div class="archive-th col-attach">Attachments</div>
+          </div>`;
+    arch.rows.forEach(v=>{
+      h+=`<div class="archive-row">
+        <div class="archive-cell col-check" style="justify-content:center;font-size:14px;color:${v.reviewed?'var(--green)':'var(--text-dim)'};">${v.reviewed?'&#10003;':'&#9675;'}</div>
+        <div class="archive-cell col-name" style="font-weight:600;color:var(--text);">${v.name}</div>
+        <div class="archive-cell col-imo" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent2);">${v.imo}</div>
+        <div class="archive-cell col-class">${v.vesselClass}</div>
+        <div class="archive-cell col-voyage" style="font-family:'JetBrains Mono',monospace;font-size:10px;">${v.voyage||'—'}</div>
+        <div class="archive-cell col-cargo"><span class="cargo-badge ${cargoClass(v.cargo)}" style="font-size:8px;">${v.cargo}</span></div>
+        <div class="archive-cell col-remarks archive-remark">${v.remarks||'—'}</div>
+        <div class="archive-cell col-attach" style="font-size:10px;color:var(--accent2);">${(v.attachments||[]).join(', ')||'—'}</div>
+      </div>`;
+    });
+    h+=`</div></div></div>`;
+  });
+  h+=`</div>`;
+  sec.innerHTML=h;
+  renderTrendChart();
+}
+function toggleAllArchives(){_archExpanded=!_archExpanded;renderArchives();}
+function toggleArchive(id){document.getElementById(id).classList.toggle('open');document.getElementById('chev-'+id).classList.toggle('open');}
+function deleteArchive(idx){
+  const a=archives[idx];
+  if(!confirm('Permanently delete archive for '+a.date+'?'))return;
+  archives.splice(idx,1);renderArchives();saveState();showNotif('Archive deleted — '+a.date,true);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TREND CHART
+// ══════════════════════════════════════════════════════════════════════════════
+function renderTrendChart(){
+  const canvas=document.getElementById('trendCanvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth,H=canvas.parentElement.clientHeight;
+  if(!W||!H)return;
+  canvas.width=W*dpr;canvas.height=H*dpr;ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
+  const cs=getComputedStyle(document.documentElement);
+  const accent=cs.getPropertyValue('--accent').trim()||'#1e6fd9';
+  const accent2=cs.getPropertyValue('--accent2').trim()||'#0c8f8f';
+  const borderC=cs.getPropertyValue('--border').trim()||'#cdd6ea';
+  const mutedC=cs.getPropertyValue('--text-muted').trim()||'#5a6a8a';
+  const dimC=cs.getPropertyValue('--text-dim').trim()||'#aab5cc';
+  const today=getActiveDate();
+  const archMap={};archives.forEach(a=>{archMap[a.date]=a.rows.length;});
+  const pts=[];
+  for(let i=29;i>=0;i--){
+    const d=new Date(today+'T00:00:00');d.setDate(d.getDate()-i);
+    const iso=d.toISOString().slice(0,10),disp=isoToDisplay(iso);
+    let count=null;
+    if(archMap[disp]!==undefined)count=archMap[disp];
+    else if(iso===today)count=vessels.length;
+    pts.push({iso,disp,count});
+  }
+  document.getElementById('trendCurrent').textContent=vessels.length;
+  const dp=pts.filter(p=>p.count!==null);
+  if(dp.length<2){ctx.font=`11px 'Barlow',sans-serif`;ctx.fillStyle=dimC;ctx.textAlign='center';ctx.fillText('Trend available after first archived day',W/2,H/2+4);return;}
+  const pad={l:10,r:10,t:18,b:18};
+  const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  const maxV=Math.max(...dp.map(p=>p.count),1);
+  const xs=dp.map((_,i)=>pad.l+(i/(dp.length-1))*cW);
+  const ys=dp.map(p=>pad.t+cH-(p.count/maxV)*cH);
+  ctx.setLineDash([2,4]);ctx.strokeStyle=borderC;ctx.lineWidth=0.7;
+  [0,.5,1].forEach(f=>{const y=pad.t+cH*(1-f);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cW,y);ctx.stroke();});
+  ctx.setLineDash([]);
+  const g=ctx.createLinearGradient(0,pad.t,0,pad.t+cH);g.addColorStop(0,accent+'40');g.addColorStop(1,accent+'00');
+  ctx.beginPath();ctx.moveTo(xs[0],ys[0]);
+  for(let i=1;i<xs.length;i++){const mx=(xs[i-1]+xs[i])/2;ctx.bezierCurveTo(mx,ys[i-1],mx,ys[i],xs[i],ys[i]);}
+  ctx.lineTo(xs[xs.length-1],pad.t+cH);ctx.lineTo(xs[0],pad.t+cH);ctx.closePath();ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();ctx.moveTo(xs[0],ys[0]);
+  for(let i=1;i<xs.length;i++){const mx=(xs[i-1]+xs[i])/2;ctx.bezierCurveTo(mx,ys[i-1],mx,ys[i],xs[i],ys[i]);}
+  ctx.strokeStyle=accent;ctx.lineWidth=2;ctx.stroke();
+  dp.forEach((p,i)=>{
+    const L=i===dp.length-1;
+    ctx.beginPath();ctx.arc(xs[i],ys[i],L?4:2.5,0,Math.PI*2);ctx.fillStyle=L?accent2:accent;ctx.fill();
+    if(L){ctx.strokeStyle='#fff';ctx.lineWidth=1.2;ctx.stroke();}
+    if(dp.length<=10||i%Math.ceil(dp.length/8)===0||L){ctx.font=`bold 9px 'JetBrains Mono',monospace`;ctx.fillStyle=L?accent2:mutedC;ctx.textAlign='center';ctx.fillText(p.count,xs[i],ys[i]-6);}
+  });
+  const step=Math.max(1,Math.ceil(dp.length/Math.floor(cW/18)));
+  ctx.font=`9px 'JetBrains Mono',monospace`;
+  dp.forEach((p,i)=>{
+    const L=i===dp.length-1;
+    if(i%step!==0&&!L)return;
+    ctx.textAlign=L?'right':(i===0?'left':'center');
+    ctx.fillStyle=L?accent2:mutedC;
+    ctx.fillText(p.iso.slice(8,10),xs[i],pad.t+cH+14);
+  });
+}
+window.addEventListener('resize',renderTrendChart);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// POSITION PANEL + MAP
+// ══════════════════════════════════════════════════════════════════════════════
+let vesselMarkers={};
+let baseTileLayers={};   // holds osm + dark tile layers
+let seaMarkLayer=null;
+// leafletMap is hoisted at top of script
+// currentChartStyle is hoisted at top of script (default 'dark')
+const DOT_COLORS=['#22d3ee','#f472b6','#a3e635','#fb923c','#818cf8','#34d399','#facc15','#f87171','#c084fc','#38bdf8'];
+
+// ── IN-BROWSER TILE CACHE ──────────────────────────────────────────────────────
+// Caches fetched map tiles as Blob object-URLs in memory (LRU-bounded) so that
+// re-visited tiles (panning back, zooming, or switching Bright/Dark) are served
+// from RAM instead of re-hitting the tile server. Greatly reduces tile requests.
+const _tileCacheMap   = new Map();   // tileUrl -> objectURL
+const _tileCacheOrder = [];          // insertion order for LRU eviction
+const TILE_CACHE_MAX  = 700;         // ~keeps a couple of world views in memory
+function _tileCachePut(url,obj){
+  _tileCacheMap.set(url,obj);
+  _tileCacheOrder.push(url);
+  while(_tileCacheOrder.length>TILE_CACHE_MAX){
+    const old=_tileCacheOrder.shift();
+    if(old===url)continue;
+    const o=_tileCacheMap.get(old);
+    if(o){try{URL.revokeObjectURL(o);}catch(e){} _tileCacheMap.delete(old);}
+  }
+}
+// Custom Leaflet layer that consults the in-memory cache before the network.
+const CachedTileLayer = L.TileLayer.extend({
+  createTile:function(coords,done){
+    const tile=document.createElement('img');
+    tile.alt=''; tile.setAttribute('role','presentation');
+    const url=this.getTileUrl(coords);
+    const self=this;
+    const attach=(src)=>{
+      L.DomEvent.on(tile,'load', L.Util.bind(self._tileOnLoad ,self,done,tile));
+      L.DomEvent.on(tile,'error',L.Util.bind(self._tileOnError,self,done,tile));
+      if(self.options.crossOrigin||self.options.crossOrigin===''){
+        tile.crossOrigin = self.options.crossOrigin===true ? '' : self.options.crossOrigin;
+      }
+      tile.src=src;
+    };
+    const cached=_tileCacheMap.get(url);
+    if(cached){                     // cache HIT — no network request
+      attach(cached);
+    } else {                        // cache MISS — fetch once, then cache the blob
+      fetch(url,{mode:'cors'})
+        .then(r=>{ if(!r.ok) throw new Error('tile '+r.status); return r.blob(); })
+        .then(b=>{ const o=URL.createObjectURL(b); _tileCachePut(url,o); attach(o); })
+        .catch(()=>{ attach(url); }); // fallback: let the browser load it directly
+    }
+    return tile;
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SEA ROUTE OVERLAY
+// Embedded lightweight lane network (self-contained → nothing for AV to fetch/flag).
+// searoute-js is loaded from a CDN for higher-fidelity paths; if it is blocked or
+// offline, the embedded network below powers a Dijkstra fallback so the feature
+// always works. Draws the shortest sea route from each vessel to its dest port.
+// ══════════════════════════════════════════════════════════════════════════════
+var seaRoutesOn=false;               // toggle state (var → safe for early saveState)
+var routeEngine='auto';              // 'auto' | 'searoute' | 'embedded'
+let seaRouteLayer=null;              // Leaflet layerGroup holding drawn routes
+let SEAROUTE_LIB=null;               // populated if the CDN import succeeds
+let _searouteTried=false;            // ensures we import the CDN lib only once
+let _seaGraph=null;                  // memoised adjacency list for the fallback router
+
+// -- Embedded lane network: waypoints are [lon,lat]; lanes are waypoint-key pairs.
+const SEA_WAYPOINTS={
+  ROTT:[3.0,51.9],DOVR:[1.4,50.6],USHA:[-6.5,48.3],BISC:[-9.0,44.5],FINI:[-11.0,42.5],
+  LISB:[-11.0,38.0],CANY:[-16.0,30.0],GIBW:[-7.5,35.8],GIBE:[-2.0,36.3],SICI:[11.5,37.2],
+  IONI:[19.0,35.5],CRET:[24.0,33.5],PSAI:[32.3,31.4],SUEZ:[33.9,27.5],REDN:[36.5,24.0],
+  REDS:[41.0,15.5],BABM:[43.4,12.6],ADEN:[48.0,12.2],SOCO:[54.0,13.0],ARBC:[62.0,15.5],
+  OMAN:[59.0,22.0],HORM:[56.8,26.4],FUJA:[56.5,25.2],KARA:[66.0,23.0],MUMB:[71.5,18.2],
+  LACC:[73.0,7.5],COLS:[80.5,5.0],BENG:[86.0,10.5],MALW:[95.5,5.0],MALE:[100.0,3.0],
+  SING:[104.2,1.2],SCSS:[106.5,5.0],SCSC:[111.5,12.5],HONG:[114.6,20.5],TAIW:[121.0,23.5],
+  SHAN:[123.5,31.0],KORE:[126.5,34.0],JAPN:[139.5,34.5],
+  DAKR:[-20.0,12.0],GULFG:[-2.0,1.0],STHEL:[-6.0,-16.0],NAMB:[11.0,-26.0],CAPE:[18.5,-35.5],
+  AGUL:[27.0,-37.0],SWIO:[45.0,-33.0],MIO:[65.0,-28.0],SEIO:[88.0,-25.0],SUND:[105.0,-8.0],
+  FREM:[114.5,-33.0],
+  MATL:[-30.0,40.0],USNE:[-66.0,40.5],USNY:[-73.2,40.2],HATT:[-75.0,34.0],FLOR:[-79.8,26.8],
+  CARB:[-74.0,17.0],COLON:[-79.9,9.4],BALB:[-79.6,8.5],EPAC:[-90.0,7.0],CPAC:[-125.0,13.0],
+  WPAC:[160.0,20.0]
+};
+const SEA_LANES=[
+  ['ROTT','DOVR'],['DOVR','USHA'],['USHA','BISC'],['BISC','FINI'],['FINI','LISB'],
+  ['LISB','GIBW'],['GIBW','GIBE'],['GIBE','SICI'],['SICI','IONI'],['IONI','CRET'],
+  ['CRET','PSAI'],['PSAI','SUEZ'],['SUEZ','REDN'],['REDN','REDS'],['REDS','BABM'],
+  ['BABM','ADEN'],['ADEN','SOCO'],['SOCO','ARBC'],['ARBC','OMAN'],['OMAN','HORM'],
+  ['HORM','FUJA'],['OMAN','KARA'],['KARA','MUMB'],['MUMB','LACC'],['SOCO','LACC'],
+  ['LACC','COLS'],['COLS','BENG'],['COLS','MALW'],['BENG','MALW'],['MALW','MALE'],
+  ['MALE','SING'],['SING','SCSS'],['SCSS','SCSC'],['SCSC','HONG'],['HONG','TAIW'],
+  ['TAIW','SHAN'],['SHAN','KORE'],['KORE','JAPN'],
+  ['LISB','CANY'],['CANY','DAKR'],['DAKR','GULFG'],['GULFG','STHEL'],['STHEL','NAMB'],
+  ['NAMB','CAPE'],['CAPE','AGUL'],['AGUL','SWIO'],['SWIO','MIO'],['MIO','SEIO'],
+  ['SEIO','SUND'],['SUND','MALE'],['SEIO','FREM'],['MIO','COLS'],['MIO','SOCO'],['SING','SUND'],
+  ['FINI','MATL'],['LISB','MATL'],['MATL','USNE'],['USNE','USNY'],['USNY','HATT'],
+  ['HATT','FLOR'],['FLOR','CARB'],['CARB','COLON'],['COLON','BALB'],['BALB','EPAC'],
+  ['EPAC','CPAC'],['CPAC','WPAC'],['WPAC','JAPN'],['WPAC','TAIW'],['DAKR','MATL']
+];
+// -- Compact port gazetteer so destination names resolve to coords: NAME -> [lat,lon].
+const PORT_COORDS={
+  'ROTTERDAM':[51.95,4.14],'ANTWERP':[51.30,4.29],'HAMBURG':[53.53,9.90],'BREMERHAVEN':[53.55,8.57],
+  'AMSTERDAM':[52.42,4.80],'LE HAVRE':[49.48,0.12],'LONDON':[51.50,0.05],'FELIXSTOWE':[51.95,1.32],
+  'BILBAO':[43.35,-3.02],'LISBON':[38.70,-9.42],'LEIXOES':[41.18,-8.70],'ALGECIRAS':[36.13,-5.44],
+  'GIBRALTAR':[36.14,-5.35],'VALENCIA':[39.44,-0.31],'BARCELONA':[41.35,2.16],'MARSEILLE':[43.34,5.35],
+  'GENOA':[44.40,8.90],'PIRAEUS':[37.94,23.63],'ISTANBUL':[41.00,28.97],'PORT SAID':[31.25,32.30],
+  'SUEZ':[29.97,32.55],'ALEXANDRIA':[31.20,29.88],'JEDDAH':[21.48,39.17],'AQABA':[29.52,35.00],
+  'DJIBOUTI':[11.60,43.14],'FUJAIRAH':[25.12,56.34],'JEBEL ALI':[25.01,55.06],'DUBAI':[25.27,55.30],
+  'ABU DHABI':[24.50,54.37],'DAMMAM':[26.50,50.20],'BANDAR ABBAS':[27.13,56.21],'RAS TANURA':[26.64,50.16],
+  'KARACHI':[24.80,66.98],'PORT QASIM':[24.77,67.34],'MUMBAI':[18.94,72.84],'NHAVA SHEVA':[18.95,72.95],
+  'MUNDRA':[22.74,69.70],'KANDLA':[23.02,70.22],'COCHIN':[9.97,76.27],'COLOMBO':[6.95,79.85],
+  'CHENNAI':[13.10,80.30],'VISAKHAPATNAM':[17.68,83.28],'KOLKATA':[22.55,88.31],'CHITTAGONG':[22.30,91.80],
+  'YANGON':[16.77,96.20],'SINGAPORE':[1.26,103.83],'PORT KLANG':[3.00,101.40],'TANJUNG PELEPAS':[1.36,103.55],
+  'LAEM CHABANG':[13.08,100.88],'HO CHI MINH':[10.76,106.70],'JAKARTA':[-6.10,106.88],'HONG KONG':[22.30,114.17],
+  'SHENZHEN':[22.55,113.90],'SHANGHAI':[31.23,121.50],'NINGBO':[29.87,121.55],'QINGDAO':[36.07,120.32],
+  'TIANJIN':[38.98,117.80],'BUSAN':[35.10,129.04],'KAOHSIUNG':[22.61,120.28],'TOKYO':[35.61,139.77],
+  'YOKOHAMA':[35.45,139.65],'NAGOYA':[35.05,136.85],'NEW YORK':[40.67,-74.04],'NORFOLK':[36.92,-76.33],
+  'SAVANNAH':[32.08,-81.10],'HOUSTON':[29.73,-95.26],'NEW ORLEANS':[29.95,-90.07],'LOS ANGELES':[33.73,-118.26],
+  'LONG BEACH':[33.75,-118.20],'OAKLAND':[37.80,-122.32],'VANCOUVER':[49.29,-123.11],'SANTOS':[-23.98,-46.30],
+  'RIO DE JANEIRO':[-22.90,-43.19],'BUENOS AIRES':[-34.60,-58.37],'PANAMA':[8.95,-79.56],'COLON':[9.36,-79.90],
+  'BALBOA':[8.95,-79.57],'DURBAN':[-29.87,31.03],'CAPE TOWN':[-33.90,18.43],'WALVIS BAY':[-22.95,14.50],
+  'LAGOS':[6.44,3.42],'TEMA':[5.62,0.00],'ABIDJAN':[5.28,-4.00],'DAKAR':[14.68,-17.42],
+  'FREMANTLE':[-32.05,115.74],'MELBOURNE':[-37.83,144.92],'SYDNEY':[-33.85,151.23],'BRISBANE':[-27.38,153.17],
+  'PORT HEDLAND':[-20.31,118.58],'DAMPIER':[-20.63,116.71],'NEWCASTLE':[-32.92,151.78],
+  // — Atlantic islands / Iberia / W.Africa —
+  'LAS PALMAS':[28.14,-15.41],'SANTA CRUZ DE TENERIFE':[28.48,-16.24],'TENERIFE':[28.48,-16.24],
+  'FUNCHAL':[32.64,-16.91],'PONTA DELGADA':[37.74,-25.66],'CEUTA':[35.89,-5.31],'TANGIER':[35.79,-5.81],
+  'TANGER MED':[35.88,-5.50],'CASABLANCA':[33.60,-7.62],'NOUADHIBOU':[20.90,-17.05],'ABIDJAN ':[5.28,-4.00],
+  'TAKORADI':[4.88,-1.75],'LOME':[6.12,1.28],'COTONOU':[6.34,2.44],'PORT HARCOURT':[4.78,7.01],
+  'LUANDA':[-8.78,13.24],'PORT GENTIL':[-0.72,8.78],'POINTE NOIRE':[-4.80,11.83],
+  // — Mediterranean / Black Sea —
+  'GIOIA TAURO':[38.43,15.90],'LIVORNO':[43.55,10.29],'NAPLES':[40.84,14.25],'TARANTO':[40.47,17.23],
+  'AUGUSTA':[37.21,15.22],'VALLETTA':[35.89,14.51],'MARSAXLOKK':[35.83,14.54],'IZMIR':[38.44,27.14],
+  'MERSIN':[36.80,34.63],'ISKENDERUN':[36.68,36.18],'CONSTANTA':[44.17,28.65],'ODESSA':[46.48,30.73],
+  'NOVOROSSIYSK':[44.72,37.78],'FOS':[43.42,4.86],'SETE':[43.40,3.70],'KOPER':[45.55,13.73],
+  'TRIESTE':[45.65,13.76],'RIJEKA':[45.33,14.44],'THESSALONIKI':[40.63,22.93],'DAMIETTA':[31.46,31.76],
+  // — N.Europe / Baltic / UK —
+  'ZEEBRUGGE':[51.33,3.20],'GHENT':[51.10,3.72],'DUNKIRK':[51.05,2.37],'CALAIS':[50.96,1.87],
+  'WILHELMSHAVEN':[53.51,8.14],'GDANSK':[54.40,18.68],'GDYNIA':[54.53,18.55],'KLAIPEDA':[55.70,21.12],
+  'RIGA':[56.96,24.10],'TALLINN':[59.44,24.75],'ST PETERSBURG':[59.90,30.26],'HELSINKI':[60.16,24.96],
+  'GOTHENBURG':[57.69,11.85],'AARHUS':[56.15,10.22],'SOUTHAMPTON':[50.90,-1.42],'LIVERPOOL':[53.45,-3.02],
+  'IMMINGHAM':[53.63,-0.19],'TEESPORT':[54.61,-1.15],'DUBLIN':[53.35,-6.20],'CORK':[51.84,-8.30],
+  'BERGEN':[60.39,5.32],'STAVANGER':[58.97,5.73],'ST NAZAIRE':[47.27,-2.20],'NANTES':[47.21,-1.56],
+  // — Middle East / Red Sea / India —
+  'SOHAR':[24.51,56.63],'SALALAH':[16.94,54.01],'HAMAD':[25.02,51.60],'DOHA':[25.29,51.53],
+  'SHUWAIKH':[29.35,47.93],'SHUAIBA':[29.03,48.15],'UMM QASR':[30.03,47.93],'BUSHEHR':[28.98,50.84],
+  'YANBU':[24.09,38.06],'SOKHNA':[29.68,32.34],'HODEIDAH':[14.82,42.94],'BERBERA':[10.44,45.02],
+  'MOMBASA':[-4.05,39.67],'DAR ES SALAAM':[-6.82,39.30],'TOAMASINA':[-18.15,49.42],'PORT LOUIS':[-20.16,57.50],
+  'PARADIP':[20.26,86.68],'KRISHNAPATNAM':[14.28,80.12],'ENNORE':[13.24,80.34],'TUTICORIN':[8.75,78.20],
+  'HAZIRA':[21.10,72.62],'PIPAVAV':[20.92,71.51],'HALDIA':[22.03,88.10],
+  // — SE Asia / Far East —
+  'PENANG':[5.42,100.35],'PASIR GUDANG':[1.44,103.90],'BELAWAN':[3.79,98.68],'SURABAYA':[-7.20,112.73],
+  'MANILA':[14.60,120.96],'CEBU':[10.30,123.95],'DA NANG':[16.10,108.22],'HAIPHONG':[20.86,106.68],
+  'CAI MEP':[10.52,107.02],'BANGKOK':[13.10,100.58],'MAP TA PHUT':[12.68,101.15],'KEELUNG':[25.13,121.74],
+  'XIAMEN':[24.46,118.07],'FUZHOU':[26.00,119.43],'GUANGZHOU':[23.09,113.48],'ZHANJIANG':[21.17,110.40],
+  'DALIAN':[38.93,121.64],'YINGKOU':[40.28,122.10],'LIANYUNGANG':[34.75,119.45],'RIZHAO':[35.39,119.53],
+  'INCHEON':[37.45,126.60],'ULSAN':[35.50,129.38],'GWANGYANG':[34.90,127.70],'KOBE':[34.68,135.21],
+  'OSAKA':[34.65,135.43],'CHIBA':[35.57,140.06],'KItakyushu':[33.90,130.88],
+  // — Americas —
+  'CHARLESTON':[32.78,-79.92],'JACKSONVILLE':[30.39,-81.55],'MIAMI':[25.77,-80.17],'MOBILE':[30.69,-88.04],
+  'CORPUS CHRISTI':[27.81,-97.40],'TAMPA':[27.92,-82.45],'BALTIMORE':[39.26,-76.58],'PHILADELPHIA':[39.90,-75.14],
+  'BOSTON':[42.35,-71.03],'MONTREAL':[45.55,-73.54],'HALIFAX':[44.65,-63.57],'SEATTLE':[47.60,-122.34],
+  'PRINCE RUPERT':[54.32,-130.32],'MANZANILLO':[19.05,-104.32],'LAZARO CARDENAS':[17.94,-102.17],
+  'CARTAGENA':[10.40,-75.53],'CALLAO':[-12.05,-77.15],'GUAYAQUIL':[-2.28,-79.90],'SAN ANTONIO':[-33.59,-71.61],
+  'VALPARAISO':[-33.03,-71.63],'PARANAGUA':[-25.50,-48.52],'ITAJAI':[-26.90,-48.65],'RIO GRANDE':[-32.03,-52.10],
+  'MONTEVIDEO':[-34.90,-56.21],'VITORIA':[-20.32,-40.34],'TUBARAO':[-20.28,-40.25],'ITAQUI':[-2.57,-44.37],
+  // — Australia / NZ / Pacific —
+  'PORT KEMBLA':[-34.47,150.90],'GLADSTONE':[-23.84,151.25],'HAY POINT':[-21.27,149.29],
+  'ADELAIDE':[-34.78,138.49],'GEELONG':[-38.11,144.39],'AUCKLAND':[-36.84,174.77],'TAURANGA':[-37.64,176.18],
+  'LYTTELTON':[-43.60,172.72],'NOUMEA':[-22.28,166.44]
+};
+function resolvePort(name){
+  if(!name)return null;
+  const n=name.toUpperCase().trim().replace(/\s+/g,' ');
+  if(!n)return null;
+  if(PORT_COORDS[n])return PORT_COORDS[n];                       // 1) exact match
+  // 2) whole-word / prefix match on the first token (e.g. "PORT SAID EAST" → PORT SAID)
+  for(const k in PORT_COORDS){ if(n===k||n.startsWith(k+' ')||k.startsWith(n+' '))return PORT_COORDS[k]; }
+  // 3) substring match — but only for reasonably long tokens to avoid spurious hits
+  if(n.length>=4){ for(const k in PORT_COORDS){ if(k.length>=4 && (n.includes(k)||k.includes(n)))return PORT_COORDS[k]; } }
+  return null;
+}
+// -- Fallback router (great-circle Dijkstra over the embedded network) -----------
+function _hav(aLat,aLon,bLat,bLon){
+  const R=6371,rad=x=>x*Math.PI/180;
+  const dLat=rad(bLat-aLat),dLon=rad(bLon-aLon);
+  const s=Math.sin(dLat/2)**2+Math.cos(rad(aLat))*Math.cos(rad(bLat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(s)));
+}
+function _buildGraph(){
+  if(_seaGraph)return _seaGraph;
+  const adj={};Object.keys(SEA_WAYPOINTS).forEach(k=>adj[k]=[]);
+  SEA_LANES.forEach(([a,b])=>{
+    if(!SEA_WAYPOINTS[a]||!SEA_WAYPOINTS[b])return;
+    const A=SEA_WAYPOINTS[a],B=SEA_WAYPOINTS[b],w=_hav(A[1],A[0],B[1],B[0]);
+    adj[a].push([b,w]);adj[b].push([a,w]);
+  });
+  _seaGraph=adj;return adj;
+}
+function _nearestWp(lat,lon){
+  let best=null,bd=Infinity;
+  for(const k in SEA_WAYPOINTS){const P=SEA_WAYPOINTS[k];const d=_hav(lat,lon,P[1],P[0]);if(d<bd){bd=d;best=k;}}
+  return best;
+}
+function _dijkstra(src,dst){
+  const adj=_buildGraph(),dist={},prev={},vis={};
+  Object.keys(adj).forEach(k=>dist[k]=Infinity);dist[src]=0;
+  while(true){
+    let u=null,ud=Infinity;
+    for(const k in dist){if(!vis[k]&&dist[k]<ud){ud=dist[k];u=k;}}
+    if(u===null||u===dst)break;
+    vis[u]=true;
+    adj[u].forEach(([v,w])=>{if(dist[u]+w<dist[v]){dist[v]=dist[u]+w;prev[v]=u;}});
+  }
+  if(dist[dst]===Infinity)return null;
+  const path=[];let c=dst;while(c){path.unshift(c);c=prev[c];}return path;
+}
+// -- Great-circle arc (spherical slerp) between two points -----------------------
+// Produces a smooth, geodesically-accurate curved path (the shortest path over a
+// sphere) — like the dashed arcs on a global shipping-lanes map. Longitudes are
+// "unwrapped" so the drawn line never streaks across the map at the antimeridian.
+function _greatCircle(lat1,lon1,lat2,lon2){
+  const rad=x=>x*Math.PI/180, deg=x=>x*180/Math.PI;
+  const φ1=rad(lat1),λ1=rad(lon1),φ2=rad(lat2),λ2=rad(lon2);
+  // angular (central) distance between the two points
+  const d=2*Math.asin(Math.min(1,Math.sqrt(
+    Math.sin((φ2-φ1)/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin((λ2-λ1)/2)**2)));
+  if(!isFinite(d)||d===0)return [[lat1,lon1],[lat2,lon2]];
+  const n=Math.max(24,Math.min(256,Math.round(deg(d)*2.2)));  // more segments for longer legs
+  const pts=[]; let lastLon=null;
+  for(let i=0;i<=n;i++){
+    const f=i/n;
+    const A=Math.sin((1-f)*d)/Math.sin(d);
+    const B=Math.sin(f*d)/Math.sin(d);
+    const x=A*Math.cos(φ1)*Math.cos(λ1)+B*Math.cos(φ2)*Math.cos(λ2);
+    const y=A*Math.cos(φ1)*Math.sin(λ1)+B*Math.cos(φ2)*Math.sin(λ2);
+    const z=A*Math.sin(φ1)+B*Math.sin(φ2);
+    const lat=deg(Math.atan2(z,Math.sqrt(x*x+y*y)));
+    let lon=deg(Math.atan2(y,x));
+    if(lastLon!==null){ while(lon-lastLon>180)lon-=360; while(lon-lastLon<-180)lon+=360; }
+    lastLon=lon; pts.push([lat,lon]);
+  }
+  return pts;
+}
+// -- Fallback route: an accurate great-circle arc to the destination port ---------
+// (Replaces the coarse waypoint network, which could snap to far-off nodes and
+//  draw over land. The great circle is deterministic and never mis-routes.)
+// -- Pronounced "airline network" arc (schematic, NOT a navigable track) ----------
+// A bowed quadratic-Bézier curve that always arches toward the nearest pole, giving
+// the exaggerated curved look of a flight-route map. Deliberately stylised so it is
+// never mistaken for a real navigable sea route (it is drawn dashed + glowing).
+function _airlineArc(lat1,lon1,lat2,lon2){
+  // shortest-way longitude unwrap so the arc doesn't streak across the map
+  let dLon=lon2-lon1; while(dLon>180)dLon-=360; while(dLon<-180)dLon+=360;
+  const x2=lon1+dLon;
+  const mx=(lon1+x2)/2, my=(lat1+lat2)/2;
+  const cx=x2-lon1, cy=lat2-lat1;
+  const chord=Math.sqrt(cx*cx+cy*cy)||1;
+  // unit perpendicular to the chord
+  let px=-cy/chord, py=cx/chord;
+  // bow height grows with distance (pronounced, like an airline map)
+  const bow=Math.min(38,Math.max(6,chord*0.28));
+  // choose the perpendicular side that arches AWAY from the equator (poleward)
+  if(Math.abs(my+py*bow) < Math.abs(my-py*bow)){ px=-px; py=-py; }
+  const ctrlLon=mx+px*bow, ctrlLat=my+py*bow;
+  const n=72, pts=[];
+  for(let i=0;i<=n;i++){
+    const t=i/n, a=(1-t)*(1-t), b=2*(1-t)*t, c=t*t;
+    pts.push([a*lat1+b*ctrlLat+c*lat2, a*lon1+b*ctrlLon+c*x2]);
+  }
+  return pts;
+}
+// Fallback route is the stylised airline arc (clearly a direct/indicative line).
+function _fallbackRoute(oLat,oLon,dLat,dLon){
+  return _airlineArc(oLat,oLon,dLat,dLon);
+}
+// -- Unified route builder: prefers the CDN lib, else the embedded fallback ------
+function computeRoute(oLat,oLon,dLat,dLon){
+  // Engine selection: 'embedded' forces the built-in network; 'searoute'/'auto'
+  // use the CDN lib when available, otherwise fall back to the embedded network.
+  if(routeEngine!=='embedded' && SEAROUTE_LIB){
+    try{
+      const origin={type:'Feature',properties:{},geometry:{type:'Point',coordinates:[oLon,oLat]}};
+      const destination={type:'Feature',properties:{},geometry:{type:'Point',coordinates:[dLon,dLat]}};
+      const r=SEAROUTE_LIB(origin,destination);
+      const cs=r&&r.geometry&&r.geometry.coordinates;
+      if(cs&&cs.length>1){_lastEngineUsed='searoute';return cs.map(c=>[c[1],c[0]]);} // [lon,lat]->[lat,lon]
+    }catch(e){/* fall through to embedded network */}
+  }
+  _lastEngineUsed='embedded';
+  return _fallbackRoute(oLat,oLon,dLat,dLon);
+}
+var _lastEngineUsed='embedded';        // reflects which engine produced the last route
+// Change the active routing engine, persist, and redraw
+function setRouteEngine(v){
+  routeEngine=(v==='searoute'||v==='embedded')?v:'auto';
+  const sel=document.getElementById('routeEngineSelect');if(sel)sel.value=routeEngine;
+  saveState();
+  if(routeEngine!=='embedded')_loadSearouteCDN();
+  if(seaRoutesOn)drawSeaRoutes();
+}
+// -- CDN loader (dynamic import; degrades silently to the embedded network) ------
+function _loadSearouteCDN(){
+  if(_searouteTried)return;_searouteTried=true;
+  try{
+    import('https://cdn.jsdelivr.net/npm/searoute-js@1.4.0/+esm')
+      .then(m=>{SEAROUTE_LIB=(m&&(m.default||m.searoute))||null;if(SEAROUTE_LIB&&seaRoutesOn)drawSeaRoutes(true);})
+      .catch(()=>{/* embedded network stays in effect */});
+  }catch(e){/* dynamic import unsupported/blocked — embedded network stays */}
+}
+// -- Animated red "particle" searoutes -------------------------------------------
+// The open-source shortest navigable route is drawn as a faint red base line, with
+// a bright red particle travelling from the vessel's current position to its
+// destination port and leaving a fine red trail behind it (loops continuously).
+const SEAROUTE_RED='#ff2d2d';
+let _particles=[];        // active particle descriptors
+let _particleRAF=null;    // requestAnimationFrame handle
+function _maybeStopLoop(){ if(_particleRAF){cancelAnimationFrame(_particleRAF);_particleRAF=null;} }
+function _startParticleLoop(){
+  if(_particleRAF)return;
+  let last=performance.now();
+  function frame(now){
+    const dt=Math.min(0.05,(now-last)/1000); last=now;
+    for(const P of _particles){
+      P.t+=dt;
+      let prog=(P.t % P.period)/P.period;      // 0→1 sawtooth (then loops)
+      if(prog<P._lastProg)P._i=0;              // wrapped — restart trail
+      P._lastProg=prog;
+      const d=prog*P.total;
+      let i=P._i;
+      while(i<P.cum.length-1 && P.cum[i+1]<d)i++;
+      P._i=i;
+      const s=P.cum[i], e=(P.cum[i+1]!==undefined)?P.cum[i+1]:s;
+      const f=e>s?(d-s)/(e-s):0;
+      const a=P.latlngs[i], b=P.latlngs[Math.min(i+1,P.latlngs.length-1)];
+      const lat=a[0]+(b[0]-a[0])*f, lon=a[1]+(b[1]-a[1])*f;
+      P.marker.setLatLng([lat,lon]);
+      const trail=P.latlngs.slice(0,i+1); trail.push([lat,lon]);
+      P.trail.setLatLngs(trail);
+    }
+    _particleRAF=_particles.length?requestAnimationFrame(frame):null;
+  }
+  _particleRAF=requestAnimationFrame(frame);
+}
+function _addSearouteAnimation(pts,destName,fallback){
+  if(fallback){
+    // FALLBACK = stylised airline-network arc → pronounced, dashed + soft glow so it
+    // clearly reads as a DIRECT indicative line and not a navigable sea route.
+    L.polyline(pts,{color:SEAROUTE_RED,weight:7,opacity:.10,lineCap:'round',lineJoin:'round'}).addTo(seaRouteLayer);        // wide glow
+    L.polyline(pts,{color:SEAROUTE_RED,weight:2,opacity:.75,dashArray:'2 9',lineCap:'round',lineJoin:'round'}).addTo(seaRouteLayer); // dashed schematic
+  } else {
+    // Navigable (searoute-js) route — solid faint base line.
+    L.polyline(pts,{color:SEAROUTE_RED,weight:1.3,opacity:.35,lineJoin:'round'}).addTo(seaRouteLayer);
+  }
+  const trail=L.polyline([pts[0]],{color:SEAROUTE_RED,weight:2.4,opacity:.95,lineJoin:'round'}).addTo(seaRouteLayer);
+  const marker=L.circleMarker(pts[0],{radius:4.5,color:'#fff',weight:1,fillColor:SEAROUTE_RED,fillOpacity:1,className:'searoute-particle'}).addTo(seaRouteLayer);
+  L.circleMarker(pts[pts.length-1],{radius:4,color:'#fff',weight:1.4,fillColor:SEAROUTE_RED,fillOpacity:1})
+    .bindTooltip((destName||'Destination')+(fallback?' · direct (not navigable)':''),{direction:'top'}).addTo(seaRouteLayer);
+  const cum=[0]; let total=0;
+  for(let i=1;i<pts.length;i++){total+=_hav(pts[i-1][0],pts[i-1][1],pts[i][0],pts[i][1]);cum.push(total);}
+  const period=Math.min(22,Math.max(6,(total||6000)/1100));   // slower for longer legs
+  _particles.push({latlngs:pts,cum,total:total||1,t:Math.random()*period,period,marker,trail,_i:0,_lastProg:0});
+}
+// -- Draw / toggle ---------------------------------------------------------------
+// Sea routes are now shown ON HOVER only: this clears any drawn route, refreshes the
+// legend, and leaves the actual animation to be triggered when a vessel is hovered.
+function drawSeaRoutes(silent){
+  if(!leafletMap)return;
+  if(!seaRouteLayer)seaRouteLayer=L.layerGroup().addTo(leafletMap);
+  seaRouteLayer.clearLayers();
+  _particles=[]; _maybeStopLoop();
+  renderRouteLegend(0);
+  if(seaRoutesOn && !silent){
+    let routable=0,unresolved=0;
+    vessels.forEach(v=>{
+      if(hasRtz(v.imo))return;
+      const pos=vesselPositions[v.imo];if(!pos||!pos.latlon||!parseLatLon(pos.latlon))return;
+      if(resolvePort(pos.dest||''))routable++; else if(pos.dest)unresolved++;
+    });
+    showNotif(`Sea routes ON — hover a vessel to preview its route${unresolved?` · ${unresolved} port(s) not in gazetteer`:''}`,unresolved&&!routable);
+  }
+  // Keep a pinned route visible across position refreshes / redraws
+  if(seaRoutesOn && _pinnedRouteImo)_drawRouteFor(_pinnedRouteImo);
+}
+// Draw the animated sea route for a single vessel (shared by hover + click-pin)
+var _pinnedRouteImo=null;   // IMO of the vessel whose route is pinned (stays on pan)
+function _drawRouteFor(imo){
+  if(!seaRoutesOn||!leafletMap||!seaRouteLayer)return false;
+  if(hasRtz(imo))return false;                           // RTZ route shown separately
+  const idx=vessels.findIndex(v=>v.imo===imo); if(idx<0)return false;
+  const pos=vesselPositions[imo]; if(!pos||!pos.latlon)return false;
+  const o=parseLatLon(pos.latlon); if(!o)return false;
+  const dport=resolvePort(pos.dest||''); if(!dport)return false;
+  const pts=computeRoute(o.lat,o.lon,dport[0],dport[1]);
+  if(!pts||pts.length<2)return false;
+  const isFallback=(_lastEngineUsed==='embedded');   // great-circle/airline-arc engine
+  seaRouteLayer.clearLayers(); _particles=[];
+  _addSearouteAnimation(pts,pos.dest,isFallback);
+  _startParticleLoop();
+  return true;
+}
+// Hover preview — temporarily shows the hovered vessel's route
+function _hoverSeaRoute(imo){
+  if(!seaRoutesOn)return;
+  _drawRouteFor(imo);
+}
+// Leaving a vessel: fall back to the pinned route (if any), else clear
+function _unhoverSeaRoute(){
+  if(seaRoutesOn && _pinnedRouteImo && _pinnedRouteImo!==null){
+    if(_drawRouteFor(_pinnedRouteImo))return;
+  }
+  if(seaRouteLayer)seaRouteLayer.clearLayers();
+  _particles=[]; _maybeStopLoop();
+}
+// Click a vessel: pin its route so it stays while panning (click again to unpin)
+function _pinSeaRoute(imo){
+  if(!seaRoutesOn)return;
+  if(_pinnedRouteImo===imo){                                // toggle off
+    _pinnedRouteImo=null;
+    if(seaRouteLayer)seaRouteLayer.clearLayers();
+    _particles=[]; _maybeStopLoop();
+    showNotif('Sea route unpinned');
+    return;
+  }
+  if(_drawRouteFor(imo)){
+    _pinnedRouteImo=imo;
+    const v=vessels.find(v=>v.imo===imo);
+    showNotif(`Sea route pinned — ${v?v.name:imo}`);
+  }
+}
+function toggleSeaRoutes(){
+  seaRoutesOn=!seaRoutesOn;
+  const tgl=document.getElementById('seaRouteToggle');
+  if(tgl)tgl.checked=seaRoutesOn;
+  saveState();
+  if(!seaRoutesOn){
+    _pinnedRouteImo=null;                    // clear any pinned route
+    if(seaRouteLayer)seaRouteLayer.clearLayers();
+    _particles=[]; _maybeStopLoop();
+    renderRouteLegend(0);
+    return;
+  }
+  if(routeEngine!=='embedded')_loadSearouteCDN();
+  drawSeaRoutes();
+}
+// ══════════════════════════════════════════════════════════════════════════════
+// RTZ ROUTE IMPORT (drag-drop onto the map, or the Import RTZ button)
+// Parses IEC 61174 RTZ XML, matches a vessel by IMO or name, and plots the planned
+// route in that vessel's assigned colour with a "last imported" date stamp.
+// ══════════════════════════════════════════════════════════════════════════════
+let rtzLayer=null;
+function _rtzTags(root,localName){
+  let els=root.getElementsByTagNameNS?root.getElementsByTagNameNS('*',localName):[];
+  if(els&&els.length)return Array.from(els);
+  els=root.getElementsByTagName(localName);
+  return Array.from(els||[]);
+}
+function _rtzFirst(root,localName){const a=_rtzTags(root,localName);return a.length?a[0]:null;}
+function _rtzMatchByName(str){
+  const norm=s=>(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const t=norm(str); if(!t)return null;
+  let v=vessels.find(v=>norm(v.name)===t); if(v)return v;
+  return vessels.find(v=>{const n=norm(v.name);return n&&(t.includes(n)||n.includes(t));})||null;
+}
+function _fmtRtzDate(iso){
+  const d=new Date(iso); if(isNaN(d.getTime()))return'';
+  const p=n=>String(n).padStart(2,'0');
+  return `${p(d.getDate())}-${p(d.getMonth()+1)}-${d.getFullYear()}`;
+}
+function importRTZfiles(input){
+  const files=input.files; if(!files||!files.length)return;
+  Array.from(files).forEach(f=>processRTZFile(f)); input.value='';
+}
+function processRTZFile(file){
+  const reader=new FileReader();
+  reader.onload=e=>parseAndApplyRTZ(e.target.result,file.name);
+  reader.onerror=()=>showNotif('Could not read '+file.name,true);
+  reader.readAsText(file);
+}
+function parseAndApplyRTZ(xmlText,fname){
+  let doc;
+  try{doc=new DOMParser().parseFromString(xmlText,'application/xml');}catch(err){showNotif('Invalid RTZ: '+(fname||''),true);return;}
+  if(doc.getElementsByTagName('parsererror').length){showNotif('RTZ parse error: '+(fname||''),true);return;}
+  const ri=_rtzFirst(doc,'routeInfo');
+  const routeName=ri?(ri.getAttribute('routeName')||''):'';
+  const imoAttr  =ri?(ri.getAttribute('vesselIMO')||ri.getAttribute('vesselIMONumber')||''):'';
+  const nameAttr =ri?(ri.getAttribute('vesselName')||''):'';
+  const wpEls=_rtzTags(doc,'waypoint');
+  const pts=[];
+  wpEls.forEach(w=>{
+    const pos=_rtzTags(w,'position')[0];
+    if(pos){const la=parseFloat(pos.getAttribute('lat')),lo=parseFloat(pos.getAttribute('lon'));
+      if(!isNaN(la)&&!isNaN(lo))pts.push([la,lo]);}
+  });
+  if(pts.length<2){showNotif(`RTZ "${fname||''}" has no usable waypoints`,true);return;}
+  const imoDigits=(imoAttr||'').replace(/\D/g,'');
+  let vessel=null;
+  if(imoDigits)vessel=vessels.find(v=>String(v.imo).replace(/\D/g,'')===imoDigits);
+  if(!vessel&&nameAttr)vessel=_rtzMatchByName(nameAttr);
+  if(!vessel&&routeName)vessel=_rtzMatchByName(routeName);
+  if(!vessel){showNotif(`RTZ: no matching vessel (name "${nameAttr||routeName||'?'}"${imoDigits?`, IMO ${imoDigits}`:''})`,true);return;}
+  const lastName=wpEls.length?(wpEls[wpEls.length-1].getAttribute('name')||''):'';
+  // ETD at the first waypoint (from the RTZ <schedule>) → names the route
+  const firstWpId=wpEls.length?(wpEls[0].getAttribute('id')||''):'';
+  const etdInfo=_rtzFirstEtd(doc,firstWpId,wpEls[0]||null,routeName,fname);
+  const etd=etdInfo?etdInfo.iso:null, etdDateOnly=!!(etdInfo&&etdInfo.dateOnly);
+  const list=rtzList(vessel.imo).slice();
+  // Same route file uploaded again → refresh it instead of duplicating
+  const ptsKey=JSON.stringify(pts);                 // identical waypoints = same route file
+  const dup=list.find(r=>(!r.etd||!etd||r.etd===etd) && JSON.stringify(r.pts)===ptsKey);
+  if(dup){
+    list.splice(list.indexOf(dup),1);
+    dup.importedAt=new Date().toISOString();
+    if(etd){dup.etd=etd;dup.etdDateOnly=etdDateOnly;}   // picks up the WP1 date stamp on re-upload
+    list.push(dup);
+  } else {
+    list.push({
+      id:'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      name:routeName||fname||'RTZ',
+      etd:etd,
+      etdDateOnly:etdDateOnly,
+      importedAt:new Date().toISOString(),
+      pts,
+      dest:lastName||((vesselPositions[vessel.imo]&&vesselPositions[vessel.imo].dest)||'')
+    });
+  }
+  rtzRoutes[vessel.imo]=list;                     // newest = current, older = history
+  saveState();
+  drawRtzRoutes();
+  if(seaRoutesOn)drawSeaRoutes(true);             // drop the auto searoute for this vessel
+  showNotif(dup?`RTZ already on file for ${vessel.name} — set as current`
+               :`RTZ loaded for ${vessel.name} — ${pts.length} waypoints${etd?'':' (no date stamp at WP1 — import date used)'}`);
+}
+// Reads the date stamp of the first waypoint. Search order:
+//  1) <scheduleElement waypointId=WP1> etd / eta (calculated or manual schedule)
+//  2) any date-time attribute on the first <waypoint> or inside its <extensions>
+//  3) the first scheduleElement in the file carrying an etd / eta
+//  4) routeInfo validityPeriodStart
+//  5) a date written in the route name or file name (e.g. 2026-10-26, 20261026_0600, 26.10.2026)
+// RTZ times without a zone suffix are read as UTC.
+function _rtzIso(v){
+  if(!v)return null;
+  let s=String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(s))s+='Z';
+  if(!/^\d{4}-\d{2}-\d{2}/.test(s))return null;
+  const d=new Date(s);
+  return isNaN(d.getTime())?null:d.toISOString();
+}
+function _rtzDateFromText(t){
+  const s=String(t||'');let m;
+  if((m=s.match(/(20\d{2})[-_.\/]?(0[1-9]|1[0-2])[-_.\/]?(0[1-9]|[12]\d|3[01])(?:[T _-]?([01]\d|2[0-3])[:]?([0-5]\d))?/)))
+    return {iso:new Date(Date.UTC(+m[1],+m[2]-1,+m[3],+(m[4]||0),+(m[5]||0))).toISOString(),dateOnly:!m[4]};
+  if((m=s.match(/(0[1-9]|[12]\d|3[01])[-_.\/](0[1-9]|1[0-2])[-_.\/](20\d{2})(?:[T _-]?([01]\d|2[0-3])[:]?([0-5]\d))?/)))
+    return {iso:new Date(Date.UTC(+m[3],+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0))).toISOString(),dateOnly:!m[4]};
+  return null;
+}
+function _rtzFirstEtd(doc,wpId,firstWp,routeName,fname){
+  // some ECDIS / routing exports write the tag as <sheduleElement> (sic) — accept both spellings
+  const els=[..._rtzTags(doc,'scheduleElement'),..._rtzTags(doc,'sheduleElement')];
+  const pick=e=>e?(_rtzIso(e.getAttribute('etd'))||_rtzIso(e.getAttribute('eta'))):null;
+  // 1) schedule entry for WP1
+  if(wpId){const v=pick(els.find(e=>e.getAttribute('waypointId')===wpId&&(e.getAttribute('etd')||e.getAttribute('eta'))));if(v)return{iso:v,dateOnly:false};}
+  // 2) date-time attributes on WP1 itself or its extensions
+  if(firstWp){
+    const nodes=[firstWp,...Array.from(firstWp.getElementsByTagName('*'))];
+    for(const n of nodes){for(const a of Array.from(n.attributes||[])){
+      if(/^(lat|lon|id|revision|radius)$/i.test(a.name))continue;
+      const v=_rtzIso(a.value);if(v)return{iso:v,dateOnly:false};
+    }}
+  }
+  // 3) first schedule entry with a time
+  for(const e of els){const v=pick(e);if(v)return{iso:v,dateOnly:false};}
+  // 4) route validity start
+  const ri=_rtzFirst(doc,'routeInfo');
+  if(ri){const v=_rtzIso(ri.getAttribute('validityPeriodStart'));if(v)return{iso:v,dateOnly:false};}
+  // 5) date in the route name or file name
+  return _rtzDateFromText(routeName)||_rtzDateFromText(fname)||null;
+}
+// Route label: "DD-MM-YYYY HHMMZ" from the first-waypoint date stamp
+function _rtzEtdOf(R){
+  if(!R)return null;
+  if(R.etd)return{iso:R.etd,dateOnly:!!R.etdDateOnly};
+  return _rtzDateFromText(R.name);           // older uploads: try the date in the route name
+}
+function rtzStamp(R){
+  const p=n=>String(n).padStart(2,'0');
+  const e=_rtzEtdOf(R);
+  const d=new Date(e?e.iso:(R&&R.importedAt));
+  if(isNaN(d.getTime()))return 'RTZ';
+  const day=`${p(d.getUTCDate())}-${p(d.getUTCMonth()+1)}-${d.getUTCFullYear()}`;
+  return (e&&!e.dateOnly)?`${day} ${p(d.getUTCHours())}${p(d.getUTCMinutes())}Z`:day;
+}
+// Unique names per vessel: same stamp twice → "(2)", "(3)" …
+function rtzNames(imo){
+  const seen={},out={};
+  rtzList(imo).forEach(r=>{const b=rtzStamp(r);seen[b]=(seen[b]||0)+1;out[r.id]=seen[b]>1?`${b} (${seen[b]})`:b;});
+  return out;
+}
+function vesselColor(imo){
+  const i=vessels.findIndex(v=>v.imo===imo);
+  return DOT_COLORS[(i<0?0:i)%DOT_COLORS.length];
+}
+function drawRtzRoutes(){
+  if(!leafletMap)return;
+  if(!rtzLayer)rtzLayer=L.layerGroup().addTo(leafletMap);
+  rtzLayer.clearLayers();
+  // Historical (non-current) routes: fine, muted white lines underneath the current ones
+  vessels.forEach(v=>{
+    const list=rtzList(v.imo);
+    list.slice(0,-1).forEach(r=>{
+      if(r.pts&&r.pts.length>1)L.polyline(r.pts,{color:'#ffffff',weight:1,opacity:.38,lineJoin:'round',interactive:false}).addTo(rtzLayer);
+    });
+  });
+  vessels.forEach((v,idx)=>{
+    const R=rtzCurrent(v.imo); if(!R||!R.pts||R.pts.length<2)return;   // CURRENT route only
+    const color=DOT_COLORS[idx%DOT_COLORS.length];
+    L.polyline(R.pts,{color:color,weight:1.8,opacity:.95,lineJoin:'round'}).addTo(rtzLayer);
+    // start & end markers only — no intermediate waypoints drawn along the route
+    L.circleMarker(R.pts[0],{radius:4,color:'#fff',weight:1.4,fillColor:color,fillOpacity:1}).addTo(rtzLayer);
+    L.circleMarker(R.pts[R.pts.length-1],{radius:4,color:'#fff',weight:1.4,fillColor:color,fillOpacity:1})
+      .bindTooltip(R.dest||'RTZ destination',{direction:'top'}).addTo(rtzLayer);
+    // route stamp (ETD at WP1) beside the 1st waypoint — no rectangle/box
+    const stamp=rtzNames(v.imo)[R.id]||rtzStamp(R);
+    const lbl=L.divIcon({className:'',iconSize:[160,14],iconAnchor:[-6,7],
+      html:`<div style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:${color};white-space:nowrap;text-shadow:0 0 3px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.9);">RTZ ${stamp}</div>`});
+    L.marker(R.pts[0],{icon:lbl,interactive:false,zIndexOffset:-1}).addTo(rtzLayer);
+  });
+  renderRouteTree();
+}
+// Delete every route for a vessel
+function clearRtzRoute(imo){
+  const v=vessels.find(v=>v.imo===imo);
+  const n=rtzList(imo).length; if(!n)return;
+  if(!confirm(`Delete ALL ${n} RTZ route${n!==1?'s':''} for ${v?v.name:imo}?\n\nThis cannot be undone.`))return;
+  delete rtzRoutes[imo];
+  _clearRtzHover();saveState();drawRtzRoutes();if(seaRoutesOn)drawSeaRoutes(true);
+  showNotif(`All RTZ routes removed — ${v?v.name:imo}`,true);
+}
+// Delete one route; if it was the current one, the next most recent becomes current
+function deleteRtzOne(imo,id){
+  const list=rtzList(imo); const r=list.find(x=>x.id===id); if(!r)return;
+  const v=vessels.find(v=>v.imo===imo);
+  const nm=rtzNames(imo)[id]||rtzStamp(r);
+  const isCur=list[list.length-1].id===id;
+  if(!confirm(`Delete route ${nm}${isCur?' (CURRENT)':''} for ${v?v.name:imo}?`))return;
+  const rest=list.filter(x=>x.id!==id);
+  if(rest.length)rtzRoutes[imo]=rest; else delete rtzRoutes[imo];
+  _clearRtzHover();saveState();drawRtzRoutes();if(seaRoutesOn)drawSeaRoutes(true);
+  showNotif(`Route ${nm} removed${isCur&&rest.length?' — previous route is now current':''}`,true);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ROUTE HISTORY TREE (collapsible translucent side panel on the map)
+// Root → vessel → route files. Hover a historical route = faded preview on map.
+// ══════════════════════════════════════════════════════════════════════════════
+let rtzHoverLayer=null;
+var _rtzTreeOpen=false;
+var _rtzCollapsed={};          // imo → true when that vessel's branch is folded
+function _hexToRgba(hex,a){
+  const h=hex.replace('#','');const n=parseInt(h.length===3?h.split('').map(c=>c+c).join(''):h,16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+function _clearRtzHover(){if(rtzHoverLayer)rtzHoverLayer.clearLayers();}
+function rtzHoverRoute(imo,id){
+  if(!leafletMap)return;
+  if(!rtzHoverLayer)rtzHoverLayer=L.layerGroup().addTo(leafletMap);
+  rtzHoverLayer.clearLayers();
+  const r=rtzList(imo).find(x=>x.id===id); if(!r)return;
+  const tint=_hexToRgba(vesselColor(imo),.45);   // faded tint of the ship's colour
+  L.polyline(r.pts,{color:vesselColor(imo),weight:7,opacity:.10,lineJoin:'round',lineCap:'round',interactive:false}).addTo(rtzHoverLayer);
+  L.polyline(r.pts,{color:tint,weight:2.4,dashArray:'7 6',lineJoin:'round',interactive:false}).addTo(rtzHoverLayer);
+  L.circleMarker(r.pts[0],{radius:3.5,color:tint,weight:1.2,fillColor:tint,fillOpacity:1,interactive:false}).addTo(rtzHoverLayer);
+  L.circleMarker(r.pts[r.pts.length-1],{radius:3.5,color:tint,weight:1.2,fillColor:tint,fillOpacity:1,interactive:false}).addTo(rtzHoverLayer);
+}
+function rtzFocusRoute(imo,id){
+  const r=rtzList(imo).find(x=>x.id===id);
+  if(r&&leafletMap)leafletMap.fitBounds(L.latLngBounds(r.pts),{padding:[50,50]});
+}
+function toggleRouteTree(force){
+  _rtzTreeOpen=(typeof force==='boolean')?force:!_rtzTreeOpen;
+  const p=document.getElementById('rtzTreePanel');
+  const c=document.querySelector('.map-container');
+  if(p)p.classList.toggle('open',_rtzTreeOpen);
+  if(c)c.classList.toggle('rtz-tree-open',_rtzTreeOpen);
+  if(_rtzTreeOpen)renderRouteTree();
+}
+function toggleRtzBranch(imo){_rtzCollapsed[imo]=!_rtzCollapsed[imo];renderRouteTree();}
+function _escHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function renderRouteTree(){
+  const body=document.getElementById('rtzTreeBody');
+  const cnt=document.getElementById('rtzTreeCount');
+  if(!body)return;
+  const withRoutes=vessels.filter(v=>hasRtz(v.imo));
+  const total=withRoutes.reduce((s,v)=>s+rtzList(v.imo).length,0);
+  if(cnt)cnt.textContent=`${total} route${total!==1?'s':''} · ${withRoutes.length} vessel${withRoutes.length!==1?'s':''}`;
+  const tab=document.getElementById('rtzTreeTabCount'); if(tab)tab.textContent=total?String(total):'';
+  if(!withRoutes.length){
+    body.innerHTML='<div class="rtz-tree-empty">No RTZ routes imported yet.<br>Drop .rtz files onto the map or use Import RTZ.</div>';
+    return;
+  }
+  // ── layout: root (col 0) → vessels (col 1) → route files (col 2) ──
+  const ROW=24, TOP=18, X_ROOT=68, X_VES=232, X_LEAF=254;
+  const rows=[]; let y=TOP;
+  withRoutes.forEach(v=>{
+    const list=rtzList(v.imo).slice().reverse();          // newest first
+    const folded=!!_rtzCollapsed[v.imo];
+    const leaves=[];
+    if(!folded)list.forEach(()=>{leaves.push(y);y+=ROW;});
+    else y+=ROW;
+    const vy=folded?(y-ROW):(leaves[0]+leaves[leaves.length-1])/2;
+    rows.push({v,list,leaves,vy,folded});
+    y+=6;                                                  // gap between vessels
+  });
+  const H=y+TOP-6;
+  const rootY=(rows[0].vy+rows[rows.length-1].vy)/2;
+  let svg=`<svg class="rtz-tree-svg" width="100%" height="${H}" style="position:absolute;left:0;top:0;overflow:visible;">`;
+  let html='';
+  // root node
+  html+=`<div class="rtz-node" style="left:${X_ROOT-6}px;top:${rootY-6}px;"></div>`;
+  html+=`<div class="rtz-lbl rtz-lbl-root" style="right:calc(100% - ${X_ROOT-10}px);top:${rootY-7}px;">Routes</div>`;
+  rows.forEach(R=>{
+    const col=vesselColor(R.v.imo);
+    const names=rtzNames(R.v.imo);
+    const curId=rtzCurrent(R.v.imo).id;
+    // root → vessel connector (S-curve)
+    const mx=(X_ROOT+X_VES)/2;
+    svg+=`<path d="M${X_ROOT+6},${rootY} C${mx},${rootY} ${mx},${R.vy} ${X_VES-6},${R.vy}" class="rtz-link"/>`;
+    // vessel node + label (label sits left of the node, like the reference tree)
+    html+=`<div class="rtz-node rtz-node-ves${R.folded?' folded':''}" style="left:${X_VES-6}px;top:${R.vy-6}px;border-color:${col};" title="${R.folded?'Expand':'Collapse'}" onclick="toggleRtzBranch('${R.v.imo}')"></div>`;
+    html+=`<div class="rtz-lbl rtz-lbl-ves" style="right:calc(100% - ${X_VES-10}px);top:${R.vy-8}px;">`
+         +`<button class="rtz-x" title="Delete ALL routes for ${_escHtml(R.v.name)}" onclick="clearRtzRoute('${R.v.imo}')">&times;</button>`
+         +`<span onclick="toggleRtzBranch('${R.v.imo}')" style="cursor:pointer;">${_escHtml(R.v.name)}</span>`
+         +`<span class="rtz-n">${R.list.length}</span></div>`;
+    if(R.folded)return;
+    R.list.forEach((r,i)=>{
+      const ly=R.leaves[i];
+      const isCur=r.id===curId;
+      const mx2=(X_VES+X_LEAF)/2;
+      svg+=`<path d="M${X_VES+6},${R.vy} C${mx2},${R.vy} ${mx2},${ly} ${X_LEAF-5},${ly}" class="rtz-link"/>`;
+      const hov=isCur?'':`onmouseenter="rtzHoverRoute('${R.v.imo}','${r.id}')" onmouseleave="_clearRtzHover()"`;
+      html+=`<div class="rtz-leaf${isCur?' current':''}" style="left:${X_LEAF-5}px;top:${ly-9}px;" ${hov}>`
+           +`<span class="rtz-dot" style="${isCur?`background:${col};border-color:${col};`:`border-color:${_hexToRgba(col,.75)};`}"></span>`
+           +`<span class="rtz-leaf-name" onclick="rtzFocusRoute('${R.v.imo}','${r.id}')" title="${_escHtml(r.name)}${r.dest?' → '+_escHtml(r.dest):''}&#10;Imported ${_escHtml(_fmtRtzDate(r.importedAt))} · click to zoom">${_escHtml(names[r.id])}</span>`
+           +(isCur?`<span class="rtz-cur" style="color:${col};border-color:${_hexToRgba(col,.6)};">CURRENT</span>`:'')
+           +`<button class="rtz-x" title="Delete this route" onclick="event.stopPropagation();deleteRtzOne('${R.v.imo}','${r.id}')">&times;</button>`
+           +`</div>`;
+    });
+  });
+  svg+='</svg>';
+  body.innerHTML=`<div class="rtz-tree-canvas" style="height:${H}px;">${svg}${html}</div>`;
+}
+// Drag-drop RTZ files onto the map panel
+function setupMapDrop(){
+  const map=document.querySelector('.map-container'); if(!map)return;
+  const ov=document.getElementById('rtzDropOverlay');
+  const show=()=>{if(ov)ov.classList.add('visible');};
+  const hide=()=>{if(ov)ov.classList.remove('visible');};
+  ['dragenter','dragover'].forEach(ev=>map.addEventListener(ev,e=>{
+    if(e.dataTransfer)e.dataTransfer.dropEffect='copy';
+    e.preventDefault();e.stopPropagation();show();}));
+  map.addEventListener('dragleave',e=>{if(!map.contains(e.relatedTarget))hide();});
+  map.addEventListener('drop',e=>{
+    e.preventDefault();e.stopPropagation();hide();
+    const files=Array.from((e.dataTransfer&&e.dataTransfer.files)||[]);
+    const rtz=files.filter(f=>/\.(rtz|xml)$/i.test(f.name));
+    if(!rtz.length){showNotif('Drop .rtz route file(s) onto the map',true);return;}
+    rtz.forEach(f=>processRTZFile(f));
+  });
+}
+// Build the route-colour legend from the vessels that currently have a drawn route
+function renderRouteLegend(drawnCount){
+  const box=document.getElementById('routeLegend');if(!box)return;
+  if(!seaRoutesOn){box.classList.remove('visible');box.innerHTML='';return;}
+  const engLabel = routeEngine==='embedded' ? 'Great circle (direct)'
+                 : (SEAROUTE_LIB ? 'searoute-js (CDN)' : 'Great circle (CDN pending)');
+  let html=`<div class="route-legend-title">Route Colours &middot; ${engLabel}</div>`;
+  let any=false;
+  vessels.forEach((v,idx)=>{
+    const pos=vesselPositions[v.imo];if(!pos||!pos.latlon)return;
+    if(!parseLatLon(pos.latlon))return;
+    if(!resolvePort(pos.dest||''))return;
+    const color=DOT_COLORS[idx%DOT_COLORS.length];
+    html+=`<div class="route-legend-item"><span class="route-legend-line" style="border-top-color:${color};"></span>`
+        + `<span class="route-legend-txt">${v.name}${pos.dest?` <span class="rl-dest">&rarr; ${pos.dest}</span>`:''}</span></div>`;
+    any=true;
+  });
+  if(!any)html+=`<div class="route-legend-empty">No routable vessels — add a position &amp; a known destination port.</div>`;
+  box.innerHTML=html;
+  box.classList.add('visible');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TROPICAL CYCLONES — active named storms (NHC + JTWC), auto-refresh every 10 min
+//  • NHC (Atlantic / E & C Pacific): NOAA NHC MapServer — forecast points, past
+//    track and the official forecast 34/50/64-kt wind-radii polygons.
+//  • JTWC (W Pacific / Indian Ocean / S Hemisphere): Esri Living Atlas "Active
+//    Hurricanes" feed (JTWC positions + forecast track). The 34/50/64-kt quadrant
+//    radii are read from the JTWC text warning; if JTWC's server blocks the browser
+//    request, the storm is still drawn and the call-out says radii are unavailable.
+// ══════════════════════════════════════════════════════════════════════════════
+var stormsOn=!(_s&&_s.stormsOn===false);           // default ON
+let stormLayer=null,stormLabelLayer=null,_stormTimer=null,_stormBusy=false,_stormData=[];
+var _stormStatus={state:'idle',msg:'',at:null};
+const STORM_RED='#ff1f1f';
+const STORM_REFRESH_MS=10*60*1000;
+const STORM_STALE_H=36;                              // drop advisories older than this
+const NHC_SVC='https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather/MapServer';
+const ESRI_TC='https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Active_Hurricanes_v1/FeatureServer';
+// NHC storm slots AT1–AT5, EP1–EP5, CP1–CP5 (group-layer ids); sub-layers are offsets
+const NHC_SLOTS=[4,30,56,82,108,134,160,186,212,238,264,290,316,342,368];
+const NHC_OFF={fcstPts:2,pastTrack:8,fcstRadii:12};
+const NHC_BASINS=['AL','AT','EP','CP'];
+
+function _gj(url){
+  const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),25000);
+  return fetch(url,{signal:ctl.signal,cache:'no-store'}).then(r=>{clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(j=>{if(j&&j.error)throw new Error(j.error.message||'service error');return j;});
+}
+function _q(base,id,where){
+  return `${base}/${id}/query?where=${encodeURIComponent(where||'1=1')}&outFields=*&outSR=4326&f=geojson`;
+}
+function _prop(p,k){if(!p)return undefined;if(p[k]!==undefined)return p[k];const lk=k.toLowerCase(),uk=k.toUpperCase();return p[lk]!==undefined?p[lk]:p[uk];}
+// "DD/HHMM" (UTC) → Date, choosing the month nearest to a reference time
+function _vt2date(vt,ref){
+  const m=String(vt||'').match(/(\d{1,2})\s*\/\s*(\d{2})(\d{2})/); if(!m)return null;
+  const D=+m[1],h=+m[2],mi=+m[3]; const r=ref?new Date(ref):new Date();
+  let best=null,bd=Infinity;
+  for(let k=-1;k<=1;k++){
+    const c=new Date(Date.UTC(r.getUTCFullYear(),r.getUTCMonth()+k,D,h,mi));
+    if(c.getUTCDate()!==D)continue;
+    const d=Math.abs(c-r); if(d<bd){bd=d;best=c;}
+  }
+  return best;
+}
+function _zlabel(d){if(!d)return'';const p=n=>String(n).padStart(2,'0');return `${p(d.getUTCDate())}/${p(d.getUTCHours())}${p(d.getUTCMinutes())}Z`;}
+function _basinCode(b){
+  const s=String(b||'').toUpperCase().trim();
+  if(/^(AL|AT)/.test(s)||s.includes('ATLANTIC'))return'AL';
+  if(/^EP/.test(s)||s.includes('EAST'))return'EP';
+  if(/^CP/.test(s)||s.includes('CENTRAL'))return'CP';
+  if(/^WP/.test(s)||s.includes('WEST')||s.includes('NORTHWEST'))return'WP';
+  if(/^IO/.test(s)||/^(NI|BB|AS)/.test(s)||s.includes('NORTH INDIAN'))return'IO';
+  if(/^(SH|SI|SP|SO|AU)/.test(s)||s.includes('SOUTH'))return'SH';
+  return s.slice(0,2);
+}
+function _stormPrefix(basin,wind){
+  const w=+wind||0;
+  if(w<34)return'TD';
+  if(w<64)return'TS';
+  if(basin==='WP')return w>=130?'STY':'TY';
+  if(basin==='IO'||basin==='SH')return'TC';
+  return'HU';
+}
+// Great-circle destination point (nm, true bearing) → [lat,lon]
+function _destPt(lat,lon,brg,nm){
+  const R=3440.065,d=nm/R,rad=Math.PI/180,φ1=lat*rad,λ1=lon*rad,θ=brg*rad;
+  const φ2=Math.asin(Math.sin(φ1)*Math.cos(d)+Math.cos(φ1)*Math.sin(d)*Math.cos(θ));
+  const λ2=λ1+Math.atan2(Math.sin(θ)*Math.sin(d)*Math.cos(φ1),Math.cos(d)-Math.sin(φ1)*Math.sin(φ2));
+  let lo=λ2/rad; while(lo-lon>180)lo-=360; while(lo-lon<-180)lo+=360;
+  return [φ2/rad,lo];
+}
+// Quadrant wind field polygon from NE/SE/SW/NW radii (nm)
+function _quadPoly(lat,lon,r){
+  const pts=[];
+  [[0,90,r[0]],[90,180,r[1]],[180,270,r[2]],[270,360,r[3]]].forEach(([a,b,rad])=>{
+    if(!(rad>0)){pts.push([lat,lon]);return;}
+    for(let br=a;br<=b;br+=5)pts.push(_destPt(lat,lon,br,rad));
+  });
+  return pts;
+}
+function _unwrapTrack(pts){
+  const out=[];let last=null;
+  pts.forEach(([la,lo])=>{if(last!==null){while(lo-last>180)lo-=360;while(lo-last<-180)lo+=360;}last=lo;out.push([la,lo]);});
+  return out;
+}
+// Parse JTWC text warning → [{t:Date, lat, lon, radii:{34:[ne,se,sw,nw],50:…,64:…}}]
+function _parseJtwc(txt,ref){
+  const T=String(txt||'').replace(/\r/g,'');
+  const re=/(\d{2})(\d{4})Z\s*-{2,}\s*(?:NEAR\s+)?(\d+(?:\.\d+)?)([NS])\s+(\d+(?:\.\d+)?)([EW])/g;
+  const heads=[];let m;
+  while((m=re.exec(T))!==null)heads.push({i:m.index,end:re.lastIndex,dd:m[1],hm:m[2],lat:(+m[3])*(m[4]==='S'?-1:1),lon:(+m[5])*(m[6]==='W'?-1:1)});
+  const out=[];
+  heads.forEach((h,k)=>{
+    const seg=T.slice(h.end,k+1<heads.length?heads[k+1].i:T.length);
+    const radii={};
+    const rr=/RADIUS OF 0*(\d{2,3}) KT WINDS\s*-\s*0*(\d+)\s*NM\s*(?:NORTHEAST QUADRANT\s*0*(\d+)\s*NM\s*SOUTHEAST QUADRANT\s*0*(\d+)\s*NM\s*SOUTHWEST QUADRANT\s*0*(\d+)\s*NM\s*NORTHWEST QUADRANT)?/g;
+    let q;
+    while((q=rr.exec(seg))!==null){
+      const kt=+q[1]; if(![34,50,64].includes(kt))continue;
+      radii[kt]=q[3]!==undefined?[+q[2],+q[3],+q[4],+q[5]]:[+q[2],+q[2],+q[2],+q[2]];
+    }
+    const t=_vt2date(`${h.dd}/${h.hm}`,ref);
+    // skip "vector" repeats of the same time
+    if(out.length&&out[out.length-1].t&&t&&out[out.length-1].t.getTime()===t.getTime())return;
+    out.push({t,lat:h.lat,lon:h.lon,radii});
+  });
+  return out;
+}
+
+// ── NHC (NOAA MapServer) ───────────────────────────────────────────────────────
+async function _fetchNhc(){
+  const slots=await Promise.all(NHC_SLOTS.map(b=>_gj(_q(NHC_SVC,b+NHC_OFF.fcstPts)).then(j=>({b,fc:j})).catch(e=>({b,err:e}))));
+  if(slots.every(s=>s.err))throw new Error('NHC feed unreachable');
+  const storms=[];
+  for(const s of slots){
+    const feats=(s.fc&&s.fc.features)||[]; if(!feats.length)continue;
+    const p0=feats[0].properties||{};
+    const basin=_basinCode(_prop(p0,'basin'));
+    let ref=null; const fl=String(_prop(p0,'fldatelbl')||''); const md=fl.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if(md)ref=new Date(Date.UTC(+md[1],+md[2]-1,+md[3],12));
+    const fcst=feats.map(f=>{
+      const p=f.properties||{},c=f.geometry&&f.geometry.coordinates; if(!c)return null;
+      return {lat:c[1],lon:c[0],tau:+_prop(p,'tau')||0,t:_vt2date(_prop(p,'validtime'),ref),
+              wind:+_prop(p,'maxwind')||0,gust:+_prop(p,'gust')||0,mslp:+_prop(p,'mslp')||0,
+              type:_prop(p,'tcdvlp')||_prop(p,'stormtype')||''};
+    }).filter(Boolean).sort((a,b)=>(a.tau-b.tau)||((a.t||0)-(b.t||0)));
+    if(!fcst.length)continue;
+    const [past,radii]=await Promise.all([
+      _gj(_q(NHC_SVC,s.b+NHC_OFF.pastTrack)).catch(()=>null),
+      _gj(_q(NHC_SVC,s.b+NHC_OFF.fcstRadii)).catch(()=>null)
+    ]);
+    const pastLines=[];
+    ((past&&past.features)||[]).forEach(f=>{
+      const g=f.geometry;if(!g)return;
+      const parts=g.type==='MultiLineString'?g.coordinates:(g.type==='LineString'?[g.coordinates]:[]);
+      parts.forEach(ln=>pastLines.push(ln.map(c=>[c[1],c[0]])));
+    });
+    storms.push({src:'NHC',name:String(_prop(p0,'stormname')||'UNNAMED').toUpperCase(),basin,
+      num:_prop(p0,'stormnum'),adv:_prop(p0,'advisnum'),advLabel:fl,fcst,pastLines,
+      radiiGeo:(radii&&radii.features&&radii.features.length)?radii:null,radiiNote:radii?'':'NHC wind radii unavailable'});
+  }
+  return storms;
+}
+// ── JTWC (Esri Living Atlas) ───────────────────────────────────────────────────
+async function _fetchJtwc(includeNhcBasins){
+  const [fp,op]=await Promise.all([_gj(_q(ESRI_TC,0)),_gj(_q(ESRI_TC,1)).catch(()=>null)]);
+  const now=Date.now();
+  const groups={};
+  ((fp&&fp.features)||[]).forEach(f=>{
+    const p=f.properties||{},c=f.geometry&&f.geometry.coordinates; if(!c)return;
+    const basin=_basinCode(_prop(p,'BASIN'));
+    if(!includeNhcBasins&&NHC_BASINS.includes(basin))return;
+    const adv=+_prop(p,'ADVDATE')||0;
+    if(adv&&(now-adv)>STORM_STALE_H*3600000)return;       // stale advisory → not active
+    const key=basin+'|'+_prop(p,'STORMNUM')+'|'+String(_prop(p,'STORMNAME')||'').toUpperCase();
+    (groups[key]=groups[key]||{basin,num:_prop(p,'STORMNUM'),name:String(_prop(p,'STORMNAME')||'UNNAMED').toUpperCase(),adv,pts:[]}).pts.push({
+      lat:c[1],lon:c[0],tau:+_prop(p,'TAU')||0,t:_vt2date(_prop(p,'VALIDTIME'),adv||now),
+      wind:+_prop(p,'MAXWIND')||0,gust:+_prop(p,'GUST')||0,mslp:+_prop(p,'MSLP')||0,
+      type:_prop(p,'IDVLBL')?(_prop(p,'ITCDVLP')||''):(_prop(p,'TCDVLP')||'')});
+  });
+  const obs={};
+  ((op&&op.features)||[]).forEach(f=>{
+    const p=f.properties||{},c=f.geometry&&f.geometry.coordinates; if(!c)return;
+    const key=_basinCode(_prop(p,'BASIN'))+'|'+_prop(p,'STORMNUM')+'|'+String(_prop(p,'STORMNAME')||'').toUpperCase();
+    const t=Date.UTC(+_prop(p,'YEAR')||0,(+_prop(p,'MONTH')||1)-1,+_prop(p,'DAY')||1,Math.floor((+_prop(p,'HHMM')||0)/100),(+_prop(p,'HHMM')||0)%100);
+    (obs[key]=obs[key]||[]).push({t,ll:[c[1],c[0]]});
+  });
+  const storms=[];
+  for(const key of Object.keys(groups)){
+    const g=groups[key];
+    const fcst=g.pts.sort((a,b)=>((a.t||0)-(b.t||0))||(a.tau-b.tau));
+    const past=(obs[key]||[]).sort((a,b)=>a.t-b.t).map(o=>o.ll);
+    const st={src:'JTWC',name:g.name,basin:g.basin,num:g.num,advLabel:g.adv?new Date(g.adv).toISOString().slice(0,16).replace('T',' ')+'Z':'',
+      fcst,pastLines:past.length>1?[past]:[],jtwcRadii:null,radiiNote:''};
+    // JTWC quadrant radii from the text warning (e.g. wp2726web.txt)
+    if(['WP','IO','SH'].includes(g.basin)&&g.num){
+      const yy=String(new Date(g.adv||now).getUTCFullYear()).slice(2);
+      const url=`https://www.metoc.navy.mil/jtwc/products/${g.basin.toLowerCase()}${String(Math.round(+g.num)).padStart(2,'0')}${yy}web.txt`;
+      try{
+        const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),15000);
+        const r=await fetch(url,{signal:ctl.signal,cache:'no-store'});clearTimeout(tm);
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        const parsed=_parseJtwc(await r.text(),g.adv||now);
+        if(parsed.some(b=>Object.keys(b.radii).length))st.jtwcRadii=parsed; else st.radiiNote='No wind radii in JTWC warning';
+      }catch(e){st.radiiNote='JTWC wind radii unavailable (JTWC server blocked the request)';}
+    } else if(!['WP','IO','SH'].includes(g.basin)){st.radiiNote='Wind radii from NHC feed unavailable';}
+    storms.push(st);
+  }
+  return storms;
+}
+async function fetchStorms(){
+  if(_stormBusy||!stormsOn)return;
+  _stormBusy=true; _setStormStatus('loading','Updating…');
+  let nhc=null,jt=null,errs=[];
+  try{nhc=await _fetchNhc();}catch(e){errs.push('NHC');}
+  try{jt=await _fetchJtwc(nhc===null);}catch(e){errs.push('JTWC');}
+  _stormBusy=false;
+  if(nhc===null&&jt===null){
+    _setStormStatus('error',_stormData.length?'Feed unavailable — showing last data':'Storm feed unavailable');
+    return;
+  }
+  _stormData=[...(nhc||[]),...(jt||[])];
+  _setStormStatus(errs.length?'warn':'ok',
+    `${_stormData.length} active${errs.length?` · ${errs.join('/')} feed down`:''}`,new Date());
+  drawStorms();
+}
+function _setStormStatus(state,msg,at){
+  _stormStatus={state,msg,at:at||_stormStatus.at};
+  const el=document.getElementById('stormStatus'); if(!el)return;
+  const p=n=>String(n).padStart(2,'0');
+  const t=_stormStatus.at?` · ${p(_stormStatus.at.getUTCHours())}${p(_stormStatus.at.getUTCMinutes())}Z`:'';
+  el.textContent=stormsOn?`${msg}${t}`:'Off';
+  el.className='storm-status '+state;
+}
+function drawStorms(){
+  if(!leafletMap)return;
+  if(!leafletMap.getPane('stormPane')){
+    leafletMap.createPane('stormPane').style.zIndex=380;        // below routes (400) & vessels (600)
+    leafletMap.createPane('stormLblPane').style.zIndex=590;
+  }
+  if(!stormLayer)stormLayer=L.layerGroup().addTo(leafletMap);
+  if(!stormLabelLayer)stormLabelLayer=L.layerGroup().addTo(leafletMap);
+  stormLayer.clearLayers();stormLabelLayer.clearLayers();
+  if(!stormsOn)return;
+  const fieldStyle=(kt,tau)=>{
+    const cur=!tau;
+    const fo={34:.07,50:.14,64:.26}[kt]||.07;
+    return {pane:'stormPane',color:STORM_RED,weight:cur?1.4:.8,opacity:cur?.95:.55,dashArray:cur?null:'3 3',
+            fillColor:STORM_RED,fillOpacity:cur?fo*1.3:fo*.7,interactive:false};
+  };
+  _stormData.forEach(S=>{
+    // ── wind fields: biggest first so 50/64 sit on top (concentric) ──
+    if(S.radiiGeo){
+      const feats=S.radiiGeo.features.slice().sort((a,b)=>(+_prop(b.properties,'radii')||0)-(+_prop(a.properties,'radii')||0));
+      L.geoJSON({type:'FeatureCollection',features:feats},{
+        pane:'stormPane',style:f=>fieldStyle(+_prop(f.properties,'radii')||34,+_prop(f.properties,'tau')||0)}).addTo(stormLayer);
+    } else if(S.jtwcRadii){
+      const t0=S.jtwcRadii[0]&&S.jtwcRadii[0].t?S.jtwcRadii[0].t.getTime():0;
+      S.jtwcRadii.forEach(b=>{
+        const tau=b.t&&t0?Math.round((b.t.getTime()-t0)/3600000):0;
+        [34,50,64].forEach(kt=>{if(b.radii[kt])L.polygon(_quadPoly(b.lat,b.lon,b.radii[kt]),fieldStyle(kt,tau)).addTo(stormLayer);});
+      });
+    }
+    // ── observed track (solid) ──
+    S.pastLines.forEach(ln=>{if(ln.length>1)L.polyline(_unwrapTrack(ln),{pane:'stormPane',color:STORM_RED,weight:2,opacity:.9,interactive:false}).addTo(stormLayer);});
+    // ── forecast track (dashed) + time-stamped nodes ──
+    const fc=S.fcst;
+    const line=_unwrapTrack(fc.map(n=>[n.lat,n.lon]));
+    if(line.length>1)L.polyline(line,{pane:'stormPane',color:STORM_RED,weight:2,opacity:.95,dashArray:'6 5',interactive:false}).addTo(stormLayer);
+    fc.forEach((n,i)=>{
+      const ll=line[i];
+      if(i>0){
+        L.circleMarker(ll,{pane:'stormPane',radius:3.5,color:'#fff',weight:1,fillColor:STORM_RED,fillOpacity:1})
+          .bindTooltip(`${S.name} · ${_zlabel(n.t)}<br>${n.wind} kt${n.gust?` G${n.gust}`:''}${n.type?` · ${_escHtml(n.type)}`:''}`,{direction:'top'}).addTo(stormLayer);
+        L.marker(ll,{pane:'stormLblPane',interactive:false,icon:L.divIcon({className:'',iconSize:[90,12],iconAnchor:[-7,6],
+          html:`<div class="storm-node-lbl">${_zlabel(n.t)} <span>${n.wind}kt</span></div>`})}).addTo(stormLabelLayer);
+      }
+    });
+    // ── storm centre symbol + name ──
+    const c0=fc[0]; if(!c0)return;
+    const ll0=line[0];
+    const pre=_stormPrefix(S.basin,c0.wind);
+    const southern=c0.lat<0;
+    const sym=`<svg viewBox="0 0 32 32" width="30" height="30" style="filter:drop-shadow(0 0 4px rgba(255,31,31,.8));${southern?'transform:scaleX(-1);':''}">
+      <circle cx="16" cy="16" r="5" fill="none" stroke="${STORM_RED}" stroke-width="3"/>
+      <path d="M16 11 C 16 4, 22 2, 27 3 C 22 5, 20 8, 20.5 12" fill="${STORM_RED}"/>
+      <path d="M16 21 C 16 28, 10 30, 5 29 C 10 27, 12 24, 11.5 20" fill="${STORM_RED}"/>
+      <circle cx="16" cy="16" r="2" fill="#fff"/></svg>`;
+    const pop=`<div style="font-family:'Barlow Condensed',sans-serif;min-width:200px;">
+      <div style="font-size:14px;font-weight:700;color:${STORM_RED};">${pre} ${_escHtml(S.name)}</div>
+      <div style="font-size:10px;opacity:.75;margin-bottom:4px;">${S.src} · ${S.basin}${S.num?` ${String(Math.round(+S.num)).padStart(2,'0')}`:''}${S.adv?` · Adv ${_escHtml(S.adv)}`:''}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.55;">
+        ${_zlabel(c0.t)} · ${c0.lat.toFixed(1)}${c0.lat>=0?'N':'S'} ${Math.abs(c0.lon).toFixed(1)}${c0.lon>=0?'E':'W'}<br>
+        Max wind ${c0.wind} kt${c0.gust?` · gust ${c0.gust} kt`:''}${c0.mslp&&c0.mslp<2000?` · ${c0.mslp} hPa`:''}<br>
+        Forecast nodes: ${Math.max(0,fc.length-1)}${fc.length>1?` → ${_zlabel(fc[fc.length-1].t)}`:''}
+      </div>
+      ${S.radiiNote?`<div style="font-size:10px;color:#f59e0b;margin-top:4px;">${_escHtml(S.radiiNote)}</div>`:''}
+      ${S.advLabel?`<div style="font-size:9px;opacity:.6;margin-top:4px;">Advisory: ${_escHtml(S.advLabel)}</div>`:''}
+    </div>`;
+    L.marker(ll0,{pane:'stormLblPane',icon:L.divIcon({className:'',html:sym,iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-14]})})
+      .bindPopup(pop,{maxWidth:280}).addTo(stormLabelLayer);
+    L.marker(ll0,{pane:'stormLblPane',interactive:false,icon:L.divIcon({className:'',iconSize:[180,30],iconAnchor:[-16,20],
+      html:`<div class="storm-name-lbl">${pre} ${_escHtml(S.name)}<div>${c0.wind} kt · ${_zlabel(c0.t)}</div></div>`})}).addTo(stormLabelLayer);
+  });
+}
+function toggleStorms(force){
+  stormsOn=(typeof force==='boolean')?force:!stormsOn;
+  const chip=document.getElementById('chip-storms'); if(chip)chip.classList.toggle('active',stormsOn);
+  clearInterval(_stormTimer);_stormTimer=null;
+  if(stormsOn){
+    _stormTimer=setInterval(fetchStorms,STORM_REFRESH_MS);
+    if(_stormData.length)drawStorms();
+    fetchStorms();
+  } else {
+    if(stormLayer)stormLayer.clearLayers();
+    if(stormLabelLayer)stormLabelLayer.clearLayers();
+    _setStormStatus('idle','Off');
+  }
+  saveState();
+}
+
+function initMap(){
+  if(leafletMap)return;
+  leafletMap=L.map('leafletMap',{center:[20,60],zoom:3,zoomControl:true,attributionControl:false});
+  // Keep the Windy weather overlay locked onto the chart as it is panned/zoomed
+  leafletMap.on('moveend zoomend',_scheduleWindySync);
+
+  // Two swappable Esri base layers (replaces OpenStreetMap / CARTO to comply with
+  // OSM tile-usage policy). Both are served through the in-memory CachedTileLayer.
+  // 'osm' key retained internally for compatibility — surfaced to users as "Bright".
+  baseTileLayers.osm  = new CachedTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,opacity:1});
+  baseTileLayers.dark = new CachedTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,maxNativeZoom:16,opacity:1});
+  baseTileLayers.sat  = new CachedTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,opacity:1});
+
+  // Sea-mark overlay applied to both styles (also cached to cut repeat requests)
+  seaMarkLayer = new CachedTileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18,opacity:.9});
+
+  // Restore saved preference or default to dark
+  currentChartStyle = (_s && _s.chartStyle) || 'dark';
+  baseTileLayers[currentChartStyle].addTo(leafletMap);
+  seaMarkLayer.addTo(leafletMap);
+
+  L.control.attribution({prefix:'Tiles © Esri — Esri, HERE, Garmin, USGS · OpenSeaMap · Windy'}).addTo(leafletMap);
+  // Sea-route overlay: create layer, restore saved toggle + engine, load CDN lib
+  if(!seaRouteLayer)seaRouteLayer=L.layerGroup().addTo(leafletMap);
+  seaRoutesOn=!!(_s&&_s.seaRoutes);
+  routeEngine=(_s&&(_s.routeEngine==='searoute'||_s.routeEngine==='embedded'))?_s.routeEngine:'auto';
+  const _srtgl=document.getElementById('seaRouteToggle');if(_srtgl)_srtgl.checked=seaRoutesOn;
+  const _seng=document.getElementById('routeEngineSelect');if(_seng)_seng.value=routeEngine;
+  if(seaRoutesOn&&routeEngine!=='embedded')_loadSearouteCDN();
+  renderRouteLegend(0);
+  // Reflect current style in the toggle
+  setTimeout(()=>syncChartStyleToggle(),0);
+}
+
+function syncChartStyleToggle(){
+  ['dark','osm','sat'].forEach(k=>{const el=document.getElementById('cs-'+k);if(el)el.classList.toggle('active',k===currentChartStyle);});
+}
+
+function setChartStyle(style){
+  if(!leafletMap||!baseTileLayers[style])return;
+  if(currentChartStyle===style){syncChartStyleToggle();return;}
+  // Swap base layers
+  leafletMap.removeLayer(baseTileLayers[currentChartStyle]);
+  baseTileLayers[style].addTo(leafletMap);
+  // Ensure sea mark layer stays on top of new base
+  if(seaMarkLayer){seaMarkLayer.bringToFront();}
+  currentChartStyle=style;
+  syncChartStyleToggle();
+  saveState();
+  // Rebuild markers so labels pick up the new colour palette
+  Object.keys(vesselMarkers).forEach(k=>{if(k.includes('_label')||k.includes('_ts')){leafletMap.removeLayer(vesselMarkers[k]);delete vesselMarkers[k];}});
+  updateMapMarkers();
+}
+
+// Which Windy weather field is currently overlaid ('waves' | 'wind' | 'pressure' | null)
+var _activeWeatherOverlay=null;
+var _windySyncTimer=null;
+// Point the Windy iframe at the CURRENT Leaflet centre/zoom. Windy's embed has no
+// live JS map API, so we (re)load the iframe at the matching view — this keeps the
+// weather field aligned with the chart, its vessels and its routes.
+function _syncWindyOverlay(){
+  if(!_activeWeatherOverlay)return;
+  const frame=document.getElementById('windyFrame');
+  if(!frame)return;
+  const c=leafletMap?leafletMap.getCenter():{lat:20,lng:60};
+  const z=leafletMap?Math.round(leafletMap.getZoom()):3;
+  const ov=_activeWeatherOverlay;
+  frame.src=`https://embed.windy.com/embed2.html?lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}&zoom=${z}&level=surface&overlay=${ov}&product=ecmwf&menu=&message=true&pressure=${ov==='pressure'}&metricWind=kn&metricTemp=%C2%B0C`;
+}
+// Debounced re-sync — avoids reloading the iframe on every pan/zoom frame.
+function _scheduleWindySync(){
+  if(!_activeWeatherOverlay)return;
+  clearTimeout(_windySyncTimer);
+  _windySyncTimer=setTimeout(_syncWindyOverlay,350);
+}
+function setOverlay(mode){
+  ['map','waves','wind','pressure'].forEach(k=>{const el=document.getElementById('chip-'+k);if(el)el.classList.toggle('active',k===mode);});
+  const frame=document.getElementById('windyFrame');
+  const container=document.querySelector('.map-container');
+  const styleToggle=document.getElementById('chartStyleToggle');
+  _activeWeatherOverlay=(mode==='map')?null:mode;
+  if(mode==='map'){
+    frame.classList.remove('visible');
+    if(container)container.classList.remove('weather-active');
+    frame.src='about:blank';
+    if(styleToggle)styleToggle.classList.remove('hidden');
+    setTimeout(updateMapMarkers,50);
+    return;
+  }
+  // Weather OVERLAY mode — Leaflet stays the master map. Windy loads as a synced
+  // transparent layer BENEATH the (now transparent, dimmed) chart, so vessel icons,
+  // RTZ routes and sea-route previews all remain visible on top of the weather.
+  if(container)container.classList.add('weather-active');
+  if(styleToggle)styleToggle.classList.add('hidden');
+  frame.classList.add('visible');
+  _syncWindyOverlay();                 // load Windy at the current chart view
+  // NB: vessel markers, sea-routes and RTZ layers are intentionally NOT removed.
+  if(typeof updateMapMarkers==='function')setTimeout(updateMapMarkers,30);
+}
+function openWindyFull(){
+  const c=leafletMap?leafletMap.getCenter():{lat:20,lng:60};
+  const z=leafletMap?leafletMap.getZoom():3;
+  window.open(`https://www.windy.com/?waves,${c.lat.toFixed(2)},${c.lng.toFixed(2)},${z}`,'_blank','noopener');
+}
+
+function flushPositions(){
+  document.querySelectorAll('.pos-data-row').forEach(row=>{
+    const imo=row.dataset.imo;if(!imo)return;
+    if(!vesselPositions[imo])vesselPositions[imo]={latlon:'',timestamp:'',dest:'',flag:'',eta:''};
+    const ins=row.querySelectorAll('input');
+    // Row now has 3 inputs in this order: latlon, dest, eta
+    ['latlon','dest','eta'].forEach((f,i)=>{if(ins[i])vesselPositions[imo][f]=ins[i].value;});
+  });
+}
+
+function parseLatLon(str){
+  // Accepts "52.424652 / 4.762655" or "52.424652/4.762655" or "52.424652, 4.762655"
+  const clean=str.replace(/\s/g,'');
+  const parts=clean.split(/[\/,]/);
+  if(parts.length===2){
+    const lat=parseFloat(parts[0]),lon=parseFloat(parts[1]);
+    if(!isNaN(lat)&&!isNaN(lon))return{lat,lon};
+  }
+  return null;
+}
+
+function renderPosRows(){
+  initMap();
+  const container=document.getElementById('posRows');
+  if(!container)return;
+  container.innerHTML='';
+  if(vessels.length===0){
+    container.innerHTML='<div style="padding:20px 16px;text-align:center;color:var(--text-dim);font-size:11px;font-family:\'Barlow Condensed\',sans-serif;letter-spacing:.1em;text-transform:uppercase;">Add vessels above first</div>';
+    updateMapMarkers();return;
+  }
+  vessels.forEach((v,idx)=>{
+    const pos=vesselPositions[v.imo]||{latlon:'',timestamp:'',dest:'',flag:'',eta:''};
+    const color=DOT_COLORS[idx%DOT_COLORS.length];
+    const row=document.createElement('div');
+    row.className='pos-data-row';row.dataset.imo=v.imo;
+    row.addEventListener('mouseenter',()=>hoverFocusVessel(v.imo));
+    row.addEventListener('mouseleave',cancelHoverFocus);
+    const flagStr=pos.flag||'';
+    const flagIcon=flagImg(flagStr);
+    row.innerHTML=`
+      <div class="pcell ptcol-flag" title="${flagStr}">${flagIcon}</div>
+      <div class="pcell ptcol-name" style="gap:7px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block;border:2px solid rgba(255,255,255,.3);box-shadow:0 0 4px ${color}88;"></span>
+        <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.name}</span>
+      </div>
+      <div class="pcell ptcol-imo" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent2);">${v.imo}</div>
+      <div class="pcell ptcol-latlon">
+        <input type="text" placeholder="52.4246 / 4.7626" value="${pos.latlon||''}"
+          oninput="updatePos('${v.imo}','latlon',this.value)" title="Paste lat / lon from MarineTraffic e.g. 52.424652 / 4.762655">
+      </div>
+      <div class="pcell ptcol-dest">
+        <input type="text" placeholder="Destination port" value="${pos.dest||''}" oninput="updatePos('${v.imo}','dest',this.value)" style="text-transform:uppercase;">
+      </div>
+      <div class="pcell ptcol-eta">
+        <input type="text" placeholder="DD-MM-YYYY HH:MM" value="${pos.eta||''}" oninput="updatePos('${v.imo}','eta',this.value)" style="font-size:11px;">
+      </div>`;
+    container.appendChild(row);
+  });
+  updateMapMarkers();
+}
+
+function updatePos(imo,field,value){
+  if(!vesselPositions[imo])vesselPositions[imo]={latlon:'',timestamp:'',dest:'',flag:'',eta:''};
+  vesselPositions[imo][field]=value;
+  clearTimeout(vesselPositions[imo]._t);
+  vesselPositions[imo]._t=setTimeout(()=>{updateMapMarkers();saveState();},600);
+}
+
+function updateMapMarkers(){
+  if(!leafletMap)return;
+  // Remove markers for vessels no longer active
+  Object.keys(vesselMarkers).forEach(k=>{
+    const base=k.replace(/_label|_ts/,'');
+    if(!vessels.find(v=>v.imo===base)){leafletMap.removeLayer(vesselMarkers[k]);delete vesselMarkers[k];}
+  });
+  const validPts=[];
+  const legendItems=document.getElementById('legendItems');
+  if(legendItems)legendItems.innerHTML='';
+  vessels.forEach((v,idx)=>{
+    const pos=vesselPositions[v.imo];
+    const color=DOT_COLORS[idx%DOT_COLORS.length];
+    const latlonStr=pos?pos.latlon:'';
+    const parsed=latlonStr?parseLatLon(latlonStr):null;
+    if(!parsed){
+      ['','_label','_ts'].forEach(sfx=>{if(vesselMarkers[v.imo+sfx]){leafletMap.removeLayer(vesselMarkers[v.imo+sfx]);delete vesselMarkers[v.imo+sfx];}});
+      return;
+    }
+    const{lat,lon}=parsed;
+    validPts.push([lat,lon]);
+
+    // Timestamp — stored as UTC; also detect if older than 24h
+    let tsLabel='',isStale=false;
+    if(pos&&pos.timestamp){
+      const t=pos.timestamp.replace('T',' ');
+      const m=t.match(/^(\d{4})-(\d{2})-(\d{2})[\sT]+(\d{2}):(\d{2})(?::(\d{2}))?/);
+      if(m){
+        tsLabel=`${m[3]}-${m[2]}-${m[1]} ${m[4]}:${m[5]} UTC`;
+        // Parse as UTC and compare with now
+        const tsDate=new Date(Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+(m[6]||0)));
+        if(!isNaN(tsDate.getTime())){
+          const ageHours=(Date.now()-tsDate.getTime())/3600000;
+          if(ageHours>24)isStale=true;
+        }
+      } else tsLabel=t+' UTC';
+    }
+    const destStr=pos&&pos.dest?pos.dest:'';
+
+    const iconHtml=`<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.7),0 0 14px ${color}cc;"></div>`;
+    const icon=L.divIcon({html:iconHtml,className:'',iconSize:[16,16],iconAnchor:[8,8],popupAnchor:[0,-12]});
+    const popup=`<div style="font-family:'Barlow Condensed',sans-serif;min-width:180px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px;">${v.name}</div>
+      <div style="font-size:10px;color:#5a6a8a;font-family:'JetBrains Mono',monospace;margin-bottom:2px;">IMO: ${v.imo}</div>
+      <div style="font-size:10px;color:#5a6a8a;font-family:'JetBrains Mono',monospace;margin-bottom:2px;">${lat.toFixed(4)}°N / ${lon.toFixed(4)}°E</div>
+      ${tsLabel?`<div style="font-size:10px;color:#1e6fd9;font-family:'JetBrains Mono',monospace;margin-bottom:2px;">AIS: ${tsLabel}</div>`:''}
+      ${destStr?`<div style="font-size:10px;color:#5a6a8a;margin-bottom:2px;">Dest: <strong>${destStr}</strong></div>`:''}
+      <div style="margin-top:6px;"><a href="https://www.marinetraffic.com/en/ais/details/ships/imo:${v.imo}" target="_blank" style="font-size:10px;color:#0c8f8f;font-weight:600;text-transform:uppercase;">&#8599; MarineTraffic</a></div>
+    </div>`;
+
+    if(vesselMarkers[v.imo]){vesselMarkers[v.imo].setLatLng([lat,lon]).setIcon(icon).getPopup().setContent(popup);}
+    else{
+      vesselMarkers[v.imo]=L.marker([lat,lon],{icon}).addTo(leafletMap).bindPopup(popup,{maxWidth:240});
+      vesselMarkers[v.imo].on('mouseover',()=>_hoverSeaRoute(v.imo));
+      vesselMarkers[v.imo].on('mouseout',()=>_unhoverSeaRoute());
+      vesselMarkers[v.imo].on('click',()=>_pinSeaRoute(v.imo));
+    }
+
+    // On-map label — colours adapt to chart style; stale AIS always red
+    const isOSM = currentChartStyle==='osm';
+    const nameColor = isOSM ? '#000' : '#fff';
+    const nameShadow = isOSM
+      ? '0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 6px rgba(255,255,255,.9)'
+      : '0 1px 3px rgba(0,0,0,.9)';
+    const tsColor = isStale ? '#dc2626' : (isOSM ? '#000' : 'rgba(255,255,255,.75)');
+    const tsShadow = isOSM
+      ? '0 0 2px #fff,0 0 2px #fff,0 0 2px #fff'
+      : '0 1px 3px rgba(0,0,0,.9)';
+    const lblIcon=L.divIcon({html:`<div style="font-family:'Barlow Condensed',sans-serif;white-space:nowrap;margin-left:11px;margin-top:-4px;"><div style="font-size:11px;font-weight:700;color:${nameColor};text-shadow:${nameShadow};">${v.name}</div>${tsLabel?`<div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:${tsColor};text-shadow:${tsShadow};margin-top:1px;font-weight:${isStale?'700':'400'};">${tsLabel}</div>`:''}</div>`,className:'',iconSize:[280,26],iconAnchor:[0,7]});
+    if(!vesselMarkers[v.imo+'_label'])vesselMarkers[v.imo+'_label']=L.marker([lat,lon],{icon:lblIcon,interactive:false,zIndexOffset:-1}).addTo(leafletMap);
+    else vesselMarkers[v.imo+'_label'].setLatLng([lat,lon]).setIcon(lblIcon);
+
+    // Legend — vessel name only, no AIS timestamp
+    if(legendItems)legendItems.innerHTML+=`<div class="legend-item"><div class="legend-dot" style="background:${color};box-shadow:0 0 4px ${color}88;"></div><div><div class="legend-name">${v.name}</div></div></div>`;
+  });
+  const tip=document.getElementById('mapTip');
+  const legend=document.getElementById('mapLegend');
+  if(tip)tip.classList.toggle('hidden',validPts.length>0);
+  if(legend)legend.classList.toggle('visible',validPts.length>0);
+  drawRtzRoutes();
+  if(seaRoutesOn)drawSeaRoutes(true);
+}
+
+// ── Hover a vessel row → fit the map to its latest (current) RTZ route, else its last position ──
+var _hoverFocusT=null;
+function hoverFocusVessel(imo){
+  clearTimeout(_hoverFocusT);
+  _hoverFocusT=setTimeout(()=>focusVessel(imo),220);     // short delay so sweeping across rows doesn't jump the map
+}
+function cancelHoverFocus(){clearTimeout(_hoverFocusT);}
+function focusVessel(imo){
+  if(!leafletMap)return;
+  const R=rtzCurrent(imo);
+  const pos=vesselPositions[imo]&&vesselPositions[imo].latlon?parseLatLon(vesselPositions[imo].latlon):null;
+  if(R&&R.pts&&R.pts.length>1){
+    const pts=R.pts.slice(); if(pos)pts.push([pos.lat,pos.lon]);
+    leafletMap.flyToBounds(L.latLngBounds(pts),{padding:[50,50],duration:.6,maxZoom:9});
+  } else if(pos){
+    leafletMap.flyTo([pos.lat,pos.lon],Math.max(leafletMap.getZoom(),6),{duration:.6});
+  } else return;
+}
+// ── Maximise / restore the map ──
+var _mapMax=false;
+const _ICON_MAX='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>';
+const _ICON_MIN='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2v4H2M14 6h-4V2M10 14v-4h4M2 10h4v4"/></svg>';
+function toggleMapMax(force){
+  _mapMax=(typeof force==='boolean')?force:!_mapMax;
+  const c=document.querySelector('.map-container'),b=document.getElementById('mapMaxBtn');
+  if(c)c.classList.toggle('map-max',_mapMax);
+  document.body.classList.toggle('map-max-open',_mapMax);
+  if(b){b.innerHTML=_mapMax?_ICON_MIN:_ICON_MAX;b.title=_mapMax?'Restore map size (Esc)':'Maximise map (Esc to restore)';}
+  if(leafletMap)setTimeout(()=>{leafletMap.invalidateSize();_scheduleWindySync();},60);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&_mapMax)toggleMapMax(false);});
+function fitAllVessels(){
+  if(!leafletMap){showNotif('Map not initialised',true);return;}
+  const pts=vessels.map(v=>vesselPositions[v.imo]).filter(p=>p&&p.latlon).map(p=>parseLatLon(p.latlon)).filter(Boolean).map(({lat,lon})=>[lat,lon]);
+  if(pts.length===0){showNotif('No positions entered yet',true);return;}
+  if(pts.length===1){leafletMap.setView(pts[0],6);return;}
+  leafletMap.fitBounds(L.latLngBounds(pts),{padding:[60,60]});
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DRAG & DROP JSON IMPORT
+// ══════════════════════════════════════════════════════════════════════════════
+function setupDragDrop(){
+  const zone=document.getElementById('dropZone');
+  if(!zone)return;
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag-over');});
+  zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
+  zone.addEventListener('drop',e=>{
+    e.preventDefault();zone.classList.remove('drag-over');
+    const file=e.dataTransfer.files[0];
+    if(!file)return;
+    if(/\.(rtz|xml)$/i.test(file.name)){         // RTZ can also be dropped on this zone
+      Array.from(e.dataTransfer.files).forEach(f=>{if(/\.(rtz|xml)$/i.test(f.name))processRTZFile(f);});
+      return;
+    }
+    if(!file.name.endsWith('.json')){showNotif('Drop a .json database or .rtz route file',true);return;}
+    processJSONFile(file);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// IMPORT / EXPORT
+// ══════════════════════════════════════════════════════════════════════════════
+function importCSV(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const text=e.target.result;
+    function parseLine(line){
+      const res=[];let cur='',inQ=false;
+      for(const ch of line){if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){res.push(cur.trim());cur='';}else cur+=ch;}
+      res.push(cur.trim());return res;
+    }
+    const lines=text.split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length<2){showNotif('CSV empty or missing data',true);return;}
+    let added=0,skipped=0;
+    for(let i=1;i<lines.length;i++){
+      const cols=parseLine(lines[i]);
+      const name=(cols[0]||'').trim(),imo=(cols[1]||'').trim(),vc=(cols[2]||'').trim(),cargo=(cols[3]||'').trim();
+      if(!name&&!imo){skipped++;continue;}
+      if(imo&&vessels.find(v=>v.imo===imo)){skipped++;continue;}
+      vessels.push({id:nextId++,name:name||'—',imo:imo||'—',vesselClass:vc||'—',voyage:'—',cargo:cargo||'—',remarks:'',attachments:[],reviewed:false});
+      added++;
+    }
+    renderRows();saveState();input.value='';
+    if(added>0)showNotif(`Imported ${added} vessel${added!==1?'s':''}${skipped?' · '+skipped+' skipped':''}`);
+    else showNotif('No new vessels — all already present',true);
+  };
+  reader.readAsText(file);
+}
+
+// Import MarineTraffic position CSV
+// Col A=Flag, B=Vessel Name, C=Destination Port, D=Reported ETA, E=Reported Destination,
+// F=Current Port, G=IMO, H=Vessel Type, I=Time Of Latest Position (UTC), J=Latitude, K=Longitude
+function importMTcsv(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const text=e.target.result.replace(/^\uFEFF/,''); // strip BOM if present
+    function parseLine(line){
+      const res=[];let cur='',inQ=false;
+      for(const ch of line){if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){res.push(cur.trim());cur='';}else cur+=ch;}
+      res.push(cur.trim());return res;
+    }
+    const lines=text.split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length<2){showNotif('MT CSV empty or missing data',true);input.value='';return;}
+    let updated=0,unmatched=0;
+    for(let i=1;i<lines.length;i++){
+      const cols=parseLine(lines[i]);
+      const flag = (cols[0]||'').trim();   // Col A — Flag country
+      const dest = (cols[2]||'').trim();   // Col C — Destination Port
+      const eta  = (cols[3]||'').trim();   // Col D — Reported ETA
+      const imo  = (cols[6]||'').trim();   // Col G
+      const ts   = (cols[8]||'').trim();   // Col I — Time Of Latest Position UTC
+      const lat  = (cols[9]||'').trim();   // Col J
+      const lon  = (cols[10]||'').trim();  // Col K
+      if(!imo)continue;
+      const vessel=vessels.find(v=>String(v.imo).trim()===imo);
+      if(!vessel){unmatched++;continue;}
+      if(!vesselPositions[imo])vesselPositions[imo]={latlon:'',timestamp:'',dest:'',flag:'',eta:''};
+      if(lat&&lon)vesselPositions[imo].latlon=`${lat} / ${lon}`;
+      if(ts)vesselPositions[imo].timestamp=ts;
+      if(dest)vesselPositions[imo].dest=dest;
+      if(flag)vesselPositions[imo].flag=flag;
+      if(eta){
+        // Reformat ETA to DD-MM-YYYY HH:MM
+        const m=eta.match(/^(\d{4})-(\d{2})-(\d{2})[\sT]+(\d{2}):(\d{2})/);
+        vesselPositions[imo].eta = m ? `${m[3]}-${m[2]}-${m[1]} ${m[4]}:${m[5]}` : eta;
+      }
+      updated++;
+    }
+    renderPosRows();saveState();input.value='';
+    if(updated>0)showNotif(`Positions updated for ${updated} vessel${updated!==1?'s':''}${unmatched?' · '+unmatched+' IMO(s) not in active list':''}`);
+    else showNotif('No matching vessels found — check IMO numbers',true);
+  };
+  reader.readAsText(file);
+}
+
+// Country name → ISO2 code
+function countryISO(countryName){
+  if(!countryName)return'';
+  const map={
+    'LIBERIA':'LR','PORTUGAL':'PT','MARSHALL ISLANDS':'MH','PANAMA':'PA',
+    'MALTA':'MT','SINGAPORE':'SG','HONG KONG':'HK','CYPRUS':'CY',
+    'BAHAMAS':'BS','UNITED KINGDOM':'GB','GREECE':'GR','NORWAY':'NO',
+    'DENMARK':'DK','GERMANY':'DE','NETHERLANDS':'NL','ITALY':'IT',
+    'JAPAN':'JP','CHINA':'CN','SOUTH KOREA':'KR','INDIA':'IN',
+    'PHILIPPINES':'PH','TURKEY':'TR','ANTIGUA AND BARBUDA':'AG',
+    'UNITED STATES':'US','CANADA':'CA','FRANCE':'FR','SPAIN':'ES',
+    'RUSSIA':'RU','ISLE OF MAN':'IM','GIBRALTAR':'GI','LUXEMBOURG':'LU',
+    'BELGIUM':'BE','SWEDEN':'SE','FINLAND':'FI','MEXICO':'MX',
+    'BRAZIL':'BR','CHILE':'CL','ARGENTINA':'AR','UAE':'AE','SAUDI ARABIA':'SA',
+    'AUSTRALIA':'AU','NEW ZEALAND':'NZ','SOUTH AFRICA':'ZA','EGYPT':'EG',
+    'INDONESIA':'ID','MALAYSIA':'MY','THAILAND':'TH','VIETNAM':'VN',
+    'TAIWAN':'TW','MOROCCO':'MA','TUNISIA':'TN','ALGERIA':'DZ',
+    'BARBADOS':'BB','SAINT VINCENT AND THE GRENADINES':'VC',
+    'SAINT KITTS AND NEVIS':'KN','COOK ISLANDS':'CK','CAYMAN ISLANDS':'KY',
+    'BERMUDA':'BM','VIRGIN ISLANDS':'VG','FAROE ISLANDS':'FO','ICELAND':'IS',
+    'CROATIA':'HR','POLAND':'PL','ESTONIA':'EE','LATVIA':'LV','LITHUANIA':'LT'
+  };
+  return (map[countryName.toUpperCase().trim()]||'').toLowerCase();
+}
+// Build a rectangular flag <img> from flagcdn.com (falls back to placeholder if unknown)
+function flagImg(countryName){
+  const iso=countryISO(countryName);
+  if(!iso)return'<span style="display:inline-block;width:28px;height:20px;background:#ccc;border:1px solid #999;border-radius:2px;"></span>';
+  return`<img src="https://flagcdn.com/w40/${iso}.png" srcset="https://flagcdn.com/w80/${iso}.png 2x" alt="${countryName}" style="width:28px;height:20px;object-fit:cover;border:1px solid rgba(0,0,0,.2);border-radius:2px;display:inline-block;vertical-align:middle;" onerror="this.style.display='none'">`;
+}
+// Legacy flagEmoji kept as thin wrapper for any external references
+function flagEmoji(c){return flagImg(c);}
+
+function processJSONFile(file){
+  const reader=new FileReader();
+  reader.onload=function(e){
+    let data;
+    try{data=JSON.parse(e.target.result);}
+    catch(err){showNotif('Invalid JSON file',true);return;}
+    if(!Array.isArray(data.vessels)||!Array.isArray(data.archives)){
+      showNotif('Invalid database — missing vessels or archives',true);return;
+    }
+    if(!confirm(`Import database?\n\nThis will REPLACE:\n• ${vessels.length} active vessel(s) → ${data.vessels.length}\n• ${archives.length} archived day(s) → ${data.archives.length}\n\nThis cannot be undone.`))return;
+    vessels=data.vessels;
+    archives=data.archives;
+    if(data.vesselPositions)vesselPositions=data.vesselPositions;
+    rtzRoutes=migrateRtz(data.rtzRoutes||{});
+    const allIds=[...vessels.map(v=>v.id),...archives.flatMap(a=>a.rows.map(r=>r.id))].filter(Number.isFinite);
+    nextId=allIds.length?Math.max(...allIds)+1:1;
+    if(data.activeDate)document.getElementById('headerDate').value=data.activeDate;
+    renderRows();renderArchives();renderPosRows();saveState();
+    showNotif(`Imported — ${vessels.length} vessel(s), ${archives.length} archived day(s)`);
+  };
+  reader.readAsText(file);
+}
+
+function importJSON(input){
+  const file=input.files[0];if(!file)return;
+  processJSONFile(file);input.value='';
+}
+
+function exportJSON(){
+  flushRemarks();flushPositions();
+  const [Y,M,D]=getActiveDate().split('-');          // active review date
+  const stamp=`${D}${M}${Y}`;                          // DDMMYYYY
+  const payload={exportedAt:new Date().toISOString(),activeDate:getActiveDate(),vessels,archives,vesselPositions,rtzRoutes};
+  downloadFile(`windmill&project_VM_${stamp}.json`,'application/json',JSON.stringify(payload,null,2));
+  showNotif('Database exported as JSON');
+}
+
+function exportIMOcsv(){
+  flushRemarks();
+  if(vessels.length===0){showNotif('No active vessels',true);return;}
+  const d=isoToDisplay(getActiveDate()).replace(/ /g,'-');
+  const hdr='Vessel Name,IMO Number,Class,Cargo Type,Voyage No.';
+  const rows=vessels.map(v=>`"${v.name}","${v.imo}","${v.vesselClass}","${v.cargo}","${v.voyage}"`);
+  downloadFile(`Export4MarineTraffic_${d}.csv`,'text/csv',[hdr,...rows].join('\r\n'));
+  showNotif(`Exported ${vessels.length} vessel(s)`);
+}
+
+function downloadFile(name,mime,content){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download=name;document.body.appendChild(a);a.click();
+  document.body.removeChild(a);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ANALYTICS
+// ══════════════════════════════════════════════════════════════════════════════
+let currentPeriod='week';
+let chartCargoType=null,chartPeriod=null,chartStacked=null;
+
+const CARGO_LABELS=['Windmill / Project Cargo','Deck Cargo (Logs etc.)','Heavy Units / Steel Pipes / Coils'];
+const CARGO_COLORS=['rgba(14,168,168,.8)','rgba(30,111,217,.8)','rgba(245,158,11,.8)'];
+const CARGO_BORDERS=['#0c8f8f','#1e6fd9','#d97706'];
+
+function setPeriod(p,btn){
+  currentPeriod=p;
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAnalytics();
+}
+
+// Build a time-bucketed dataset from archives + today
+function buildDataset(period){
+  // Collect all data points: {dateISO, cargo, count}
+  const allRows=[];
+  archives.forEach(arch=>{
+    // Convert display date back to ISO
+    const parts=arch.date.split(' ');// "19 May 2026"
+    if(parts.length===3){
+      const months={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+      const iso=`${parts[2]}-${months[parts[1]]}-${parts[0].padStart(2,'0')}`;
+      arch.rows.forEach(v=>allRows.push({iso,cargo:v.cargo,name:v.name}));
+    }
+  });
+  // Also add today's vessels
+  vessels.forEach(v=>allRows.push({iso:getActiveDate(),cargo:v.cargo,name:v.name}));
+
+  if(allRows.length===0)return{labels:[],datasets:[],rawData:[]};
+
+  // Group into buckets
+  const bucketKey=iso=>{
+    const d=new Date(iso+'T00:00:00');
+    if(period==='week'){
+      const jan1=new Date(d.getFullYear(),0,1);
+      const wk=Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
+      return`W${String(wk).padStart(2,'0')} ${d.getFullYear()}`;
+    }
+    if(period==='month'){
+      const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+      return`${m} ${d.getFullYear()}`;
+    }
+    return`${d.getFullYear()}`;
+  };
+
+  const buckets={};
+  allRows.forEach(r=>{
+    const k=bucketKey(r.iso);
+    if(!buckets[k])buckets[k]={};
+    CARGO_LABELS.forEach(cl=>{if(!buckets[k][cl])buckets[k][cl]=0;});
+    const matched=CARGO_LABELS.find(cl=>r.cargo===cl)||CARGO_LABELS[CARGO_LABELS.length-1];
+    buckets[k][matched]=(buckets[k][matched]||0)+1;
+  });
+
+  // Sort buckets chronologically
+  const labels=Object.keys(buckets).sort((a,b)=>{
+    // Extract year and week/month
+    const getNum=s=>{const m=s.match(/(\d+)/g);return m?parseInt(m[m.length-1])*100+(m.length>1?parseInt(m[0]):0):0;};
+    return getNum(a)-getNum(b);
+  });
+
+  const datasets=CARGO_LABELS.map((cl,i)=>({
+    label:cl,
+    data:labels.map(l=>buckets[l][cl]||0),
+    backgroundColor:CARGO_COLORS[i],
+    borderColor:CARGO_BORDERS[i],
+    borderWidth:1.5
+  }));
+
+  return{labels,datasets,rawData:buckets};
+}
+
+function renderAnalytics(){
+  const{labels,datasets,rawData}=buildDataset(currentPeriod);
+  const cs=getComputedStyle(document.documentElement);
+  const textC=cs.getPropertyValue('--text').trim()||'#0f1929';
+  const mutedC=cs.getPropertyValue('--text-muted').trim()||'#5a6a8a';
+  const borderC=cs.getPropertyValue('--border').trim()||'#cdd6ea';
+  const surfC=cs.getPropertyValue('--surface').trim()||'#fff';
+
+  const baseOpts={
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{ticks:{color:mutedC,font:{size:9,family:'JetBrains Mono'}},grid:{color:borderC+'55'}},
+      y:{ticks:{color:mutedC,font:{size:9,family:'JetBrains Mono'},stepSize:1},grid:{color:borderC+'55'},beginAtZero:true}
+    }
+  };
+
+  // Cargo type totals (pie-style bar)
+  const cargoTotals=CARGO_LABELS.map(cl=>datasets.find(d=>d.label===cl)?.data.reduce((a,b)=>a+b,0)||0);
+  renderCanvas('cargoTypeChart',{
+    type:'bar',
+    data:{labels:CARGO_LABELS.map(l=>l.length>22?l.slice(0,22)+'…':l),datasets:[{label:'Vessels',data:cargoTotals,backgroundColor:CARGO_COLORS,borderColor:CARGO_BORDERS,borderWidth:1.5,borderRadius:3}]},
+    options:{...baseOpts,plugins:{legend:{display:false}}}
+  },'chartCargoType');
+
+  // Total vessel-days per period
+  const totals=labels.map(l=>CARGO_LABELS.reduce((sum,cl)=>(rawData[l]?sum+(rawData[l][cl]||0):sum),0));
+  renderCanvas('periodChart',{
+    type:'bar',
+    data:{labels,datasets:[{label:'Total Vessels',data:totals,backgroundColor:'rgba(30,111,217,.7)',borderColor:'#1e6fd9',borderWidth:1.5,borderRadius:3}]},
+    options:{...baseOpts}
+  },'chartPeriod');
+
+  // Stacked breakdown over time
+  renderCanvas('stackedChart',{
+    type:'bar',
+    data:{labels,datasets:datasets.map((d,i)=>({...d,stack:'s',borderRadius:i===datasets.length-1?3:0}))},
+    options:{...baseOpts,plugins:{legend:{display:true,position:'bottom',labels:{color:mutedC,font:{size:10,family:'Barlow Condensed'},boxWidth:12}}},scales:{...baseOpts.scales,x:{...baseOpts.scales.x,stacked:true},y:{...baseOpts.scales.y,stacked:true}}}
+  },'chartStacked');
+
+  // Summary chips
+  const sum=document.getElementById('cargoTypeSummary');
+  if(sum){
+    sum.innerHTML=CARGO_LABELS.map((cl,i)=>`
+      <div class="summary-chip">
+        <div class="summary-chip-dot" style="background:${CARGO_BORDERS[i]}"></div>
+        <span class="summary-chip-label">${cl.split('/')[0].trim()}</span>
+        <span class="summary-chip-val">${cargoTotals[i]}</span>
+      </div>`).join('');
+  }
+}
+
+function renderCanvas(id,config,varName){
+  const el=document.getElementById(id);if(!el)return;
+  // Destroy existing chart if present
+  if(el._chartInstance){el._chartInstance.destroy();}
+  el._chartInstance=new Chart(el.getContext('2d'),config);
+}
+
+function exportAnalyticsCSV(){
+  const{labels,datasets}=buildDataset(currentPeriod);
+  if(labels.length===0){showNotif('No archive data to export',true);return;}
+  const hdr=['Period',...CARGO_LABELS,'Total'];
+  const rows=labels.map(l=>{
+    const vals=datasets.map(d=>d.data[labels.indexOf(l)]||0);
+    const tot=vals.reduce((a,b)=>a+b,0);
+    return[`"${l}"`,...vals,tot];
+  });
+  downloadFile(`WPCVM_Analytics_${currentPeriod}_${isoToDisplay(getActiveDate()).replace(/ /g,'-')}.csv`,'text/csv',[hdr,...rows].map(r=>r.join(',')).join('\r\n'));
+  showNotif('Analytics exported as CSV');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PRINT
+// ══════════════════════════════════════════════════════════════════════════════
+function printReport(){
+  flushRemarks();
+  document.getElementById('printDate').textContent=isoToDisplay(getActiveDate());
+  window.print();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NOTIFICATION
+// ══════════════════════════════════════════════════════════════════════════════
+// _nt is hoisted at top of script
+function showNotif(msg,warn=false){
+  const el=document.getElementById('notif');
+  document.getElementById('notifText').textContent=msg;
+  el.style.borderLeftColor=warn?'var(--amber)':'var(--green)';
+  el.classList.add('show');clearTimeout(_nt);
+  _nt=setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BOOT — load Chart.js dynamically then init
+// ══════════════════════════════════════════════════════════════════════════════
+function boot(){
+  renderRows();
+  renderArchives();
+  renderPosRows();
+  setupDragDrop();
+  setupMapDrop();
+  drawRtzRoutes();
+  {const b=document.getElementById('mapMaxBtn');if(b)b.innerHTML=_ICON_MAX;}
+  // Default map view: Isobars weather layer with the storm overlay on top
+  setOverlay('pressure');
+  if(stormsOn)toggleStorms(true); else {const c=document.getElementById('chip-storms');if(c)c.classList.remove('active');_setStormStatus('idle','Off');}
+  setTimeout(renderTrendChart,100);
+  // Auto "Fit All" on open — frame the whole fleet once the map & markers are ready
+  setTimeout(()=>{
+    const hasPositions=vessels.some(v=>{const p=vesselPositions[v.imo];return p&&p.latlon&&parseLatLon(p.latlon);});
+    if(hasPositions && typeof fitAllVessels==='function')fitAllVessels();
+  },450);
+}
+
+// Load Chart.js then boot
+const cjs=document.createElement('script');
+cjs.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js';
+cjs.onload=boot;
+cjs.onerror=()=>{showNotif('Chart.js failed to load — analytics unavailable',true);boot();};
+document.head.appendChild(cjs);
+</script>
+</body>
+</html>
